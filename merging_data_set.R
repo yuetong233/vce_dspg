@@ -144,3 +144,33 @@ library(writexl)
 write_xlsx(merged_df, "Combined_Participation_Counts.xlsx")
 
 getwd()
+
+#NOW COLOR CODING DATA SECTIONS BY YEAR
+
+#OPENING AND INSTALLING NECESSARY PACKAGES
+
+install.packages("openxlsx")
+library(openxlsx)
+library(readxl)
+
+#WRITING CODE TO COLOR SPECIFIC ROWS FOR THE YEAR 2021-2022
+
+rows_to_color <- which(grepl("2021|2022"), Combined_Participation_Counts$Year) + 1
+
+color_coded_data <- read.xlsx("Combined_Participation_Counts.xlsx", sheet = "Participation Count")
+highlights_by_year_2021_2022 <- createStyle(fgFill = "#FFFF00")
+
+#COMING BACK TO THIS LATER ^^
+
+
+# ACS DATA ----------------------------------------------------------------
+
+#DOWNLOAD AND INSTALL RELEVANT PACKAGES
+install.packages("httr")
+library(httr)
+install.packages("tidycensus")
+library(tidycensus)
+
+#TRANSPLANTING API KEY CODE INTO R, 
+
+census_api_key("b8b3f887b9af8e2d4cd1d9747c7d6319c8a29b45", install = TRUE)
