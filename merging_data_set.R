@@ -134,5 +134,13 @@ merged_df <- merged_df %>%
     "County Totals" = "total",
     "County" = "CountyArea")
 
+#INSTALLING WRITEXL
 
+install.packages("writexl")
 
+#SAVING MERGED_DF SHEET INTO DOWNLOADS
+
+library(writexl)
+write_xlsx(merged_df, "Combined_Participation_Counts.xlsx")
+
+getwd()
