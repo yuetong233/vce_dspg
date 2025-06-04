@@ -174,3 +174,76 @@ library(tidycensus)
 #TRANSPLANTING API KEY CODE INTO R, 
 
 census_api_key("b8b3f887b9af8e2d4cd1d9747c7d6319c8a29b45", install = TRUE)
+
+#BEGINNING TO PULL DATA FROM THE CENSUS NOW
+
+#HERE IS AN EXAMPLE OF WHAT USING THE GET_ACS FUNCTION LOOKS LIKE
+
+data <- get_acs(geography = 'county', year = 2019, variables = c('DP04_0134', 'DP03_0062', 'DP03_0009P', 'DP04_0001', 'DP05_0001', 'DP02_0068P'))
+
+#PREVIOUS API KEY WAS EXPIRED, SO I MADE A NEW ONE AND HAVE TO RUN IT AGAIN
+
+census_api_key("b8b3f887b9af8e2d4cd1d9747c7d6319c8a29b45", install = TRUE, overwrite = TRUE)
+Sys.getenv("CENSUS_API_KEY")
+readRenviron("~/.Renviron")
+
+#NOW, NEW API KEY SHOULD WORK
+
+#RERUNNING THE EXAMPLE GET_ACS FUNCTION
+
+data_example <- get_acs(geography = 'county', year = 2019, variables = c('DP04_0134', 'DP03_0062', 'DP03_0009P', 'DP04_0001', 'DP05_0001', 'DP02_0068P'))
+
+print(data_example)
+
+#EXAMPLE WAS SUCCESSFUL!
+
+#NOW I HAVE TO CONFIGURE IT TO ONLY SHOW STATISTICS FROM VIRGINIA
+
+virginia_county_data2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0078PE")
+print(virginia_county_data2021)
+load_variables("DP02_0078PE")
+
+#THAT CODE IN LINE 204 JUST THREW ERRORS, TRYING SOMETHING NEW
+
+vars <- load_variables(2021, virginia_county_data2021, "acs5", cache = TRUE)
+print(vars)
+
+vars %>%
+  filter(name == "DP02_0078PE")
+
+#EVERYTHING FROM LINE 208 UNTIL LINE 212 IS A MISTAKE, TRYING AGAIN
+
+library(tidycensus)
+library(dplyr)
+
+#RUNNING THE BELOW CODE TO FIND ALL VARIABLES IN THE NATIONWIDE DATABASE
+
+variables <- load_variables(2021, "acs5", cache = TRUE)
+print(variables)
+
+#FINDING VARIABLE DESCRIPTION
+
+variables %>%
+  filter(name == "DP02_0078PE")
+
+#TROUBLESHOOTING NOW BECAUSE I CAN'T GET THIS TO RUN RIGHT
+
+head(virginia_county_data2021)
+
+head(variables$name, 50)
+
+(print(variables %>% 
+         filter(grepl("population", label, ignore.case = TRUE))))
+
+#EXAMPLE
+
+variable_population <- (print(variables %>% 
+  filter(grepl("population", label, ignore.case = TRUE))))
+
+View(variables)
+
+#THE SOLUTION NOW SHOULD JUST BE TO GET EVERYTHING BY 
+#SEARCHING FOR VARIABLES USING THE CODE IN LINES 235 AND 236
+#MAKING SURE TO DIFFERENTIATE THEM IN THE ENVIRONMENT AREA BY 
+#GIVING A UNIQUE NAME EACH TIME
+
