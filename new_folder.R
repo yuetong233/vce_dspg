@@ -99,4 +99,20 @@ rename(
   "County Totals" = "total",
   "County" = "CountyArea")
 
-#Hi
+#NOW, GROUP COUNTIES AND INDEPENDENT CITIES TOGETHER BY REGION
+
+library(readxl)
+library(dplyr)
+
+install.packages("writexl")
+
+library(writexl)
+
+
+
+
+
+
+
+  
+
