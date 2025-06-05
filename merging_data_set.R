@@ -1,5 +1,8 @@
 #RENAME THE COLUMN HEADERS TAKE TWO BECAUSE APPARENTLY I CANNOT PROPERLY SAVE MY FILES
 
+library(tidyverse)
+library(dplyr)
+library(tidycensus)
 #2024 - 2025
 Participation_2024_2025_thru_June_2 <- Participation_2024_2025_thru_June_2 %>%
   rename(
@@ -199,11 +202,11 @@ print(data_example)
 
 #NOW I HAVE TO CONFIGURE IT TO ONLY SHOW STATISTICS FROM VIRGINIA
 
-virginia_county_data2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0078PE")
-print(virginia_county_data2021)
+percent_disability_65_and_over <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0078PE")
+print(percent_disability_65_and_over)
 load_variables("DP02_0078PE")
 
-#THAT CODE IN LINE 204 JUST THREW ERRORS, TRYING SOMETHING NEW
+#THE CODE IN LINE 207 JUST THREW ERRORS, TRYING SOMETHING NEW
 
 vars <- load_variables(2021, virginia_county_data2021, "acs5", cache = TRUE)
 print(vars)
@@ -211,7 +214,7 @@ print(vars)
 vars %>%
   filter(name == "DP02_0078PE")
 
-#EVERYTHING FROM LINE 208 UNTIL LINE 212 IS A MISTAKE, TRYING AGAIN
+#EVERYTHING FROM LINE 211 UNTIL LINE 215 IS A MISTAKE, TRYING AGAIN
 
 library(tidycensus)
 library(dplyr)
@@ -232,7 +235,7 @@ head(virginia_county_data2021)
 
 head(variables$name, 50)
 
-(print(variables %>% 
+native_population <- (print(variables %>% 
          filter(grepl("population", label, ignore.case = TRUE))))
 
 #EXAMPLE
@@ -243,7 +246,23 @@ variable_population <- (print(variables %>%
 View(variables)
 
 #THE SOLUTION NOW SHOULD JUST BE TO GET EVERYTHING BY 
-#SEARCHING FOR VARIABLES USING THE CODE IN LINES 235 AND 236
+#SEARCHING FOR VARIABLES USING THE CODE IN LINES 238 AND 239
 #MAKING SURE TO DIFFERENTIATE THEM IN THE ENVIRONMENT AREA BY 
 #GIVING A UNIQUE NAME EACH TIME
 
+variable_info <- vars %>% filter(name == "DP02_0078P")
+print(variable_info)
+
+
+# Thursday June 5 ---------------------------------------------------------
+
+
+library(readxl)
+library(dplyr)
+library(tidycensus)
+library(tidyverse)
+
+#TESTING DIFFERENT VARIABLES TO SEE WHAT HAPPENS
+#AS AN EXAMPLE, I RAN CODE TO FIND THE PERCENTAGE OF PEOPLE
+#65 AND OVER WHO ARE DISABLED, BUT NOT INSTITUTIONALIZED
+#ACROSS ALL VIRGINIA COUNTIES AND INDEPENDENT CITIES
