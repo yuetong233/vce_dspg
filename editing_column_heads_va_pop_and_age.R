@@ -99,3 +99,13 @@ Virginia_Pop_and_Age_2020_to_2023 <- Virginia_Pop_and_Age_2020_to_2023 %>%
          "Total Median Age" = "MEDIAN_AGE_TOT",
          "Median Male Age" = "MEDIAN_AGE_MALE",
          "Median Female Age" = "MEDIAN_AGE_FEM")
+
+#NOW THAT EVERYTHING IS RENAMED, TIME TO DOWNLOAD IT INTO MY LOCAL DISC
+
+library(writexl)
+
+va_demographics <- Virginia_Pop_and_Age_2020_to_2023
+va_demographics
+
+write_xlsx(va_demographics, "va_demographics.xlsx")
+getwd()
