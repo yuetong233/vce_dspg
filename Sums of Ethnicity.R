@@ -37,3 +37,32 @@ race_counts <- df %>%
 
 # Print the result
 print(race_counts)
+
+install.packages("readxl")
+install.packages("writexl")
+install.packages("zipcodeR")
+
+# Load libraries
+library(readxl)
+library(zipcodeR)
+library(dplyr)
+library(writexl)
+
+# Read the Excel file
+df <- read_excel("~/Downloads/Better_Impact_Volunteer_Data_2024.xlsx")
+
+# Clean PostalCode: remove anything after a dash or extra digits
+df$PostalCode <- as.character(df$PostalCode)
+df$PostalCode <- gsub("[^0-9]", "", df$PostalCode)        # Keep digits only
+df$PostalCode <- substr(df$PostalCode, 1, 5)              # Keep only first 5 digits
+
+# Safely look up counties
+df$County <- sapply(df$PostalCode, function(zip) {
+  if (nchar(zip) == 5) {
+    result <- reverse_zipcode(zip)
+    if (!is.null(result)) result$county else NA
+  } else {
+    NA
+  }
+})
+write_xlsx(df, "Better_Impact_With_Counties.xlsx")
