@@ -24,4 +24,16 @@ ethnicity_summary <- df_cleaned %>%
 
 print(ethnicity_summary)
 #Up to here
+### Now I am going to start sorting the races using the unique function
+# Set working directory to Downloads (optional, adjust if necessary)
+setwd("~/Downloads")
 
+# Read in the Excel file
+df <- read_excel("Better_Impact_Volunteer_Data_2024.xlsx")
+race_counts <- df %>%
+  group_by(`CF - Demographic Information - Race`) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count))
+
+# Print the result
+print(race_counts)
