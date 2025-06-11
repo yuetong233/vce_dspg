@@ -37,7 +37,7 @@ ui <- fluidPage(
     ),
     
     tabPanel("Another Tab",
-             p("More tables to come!!")
+             p("More content here.")
     )
   )
 )
@@ -48,10 +48,9 @@ server <- function(input, output, session) {
     # Set Census API Key (Replace with your actual key)
     census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
     
-    # Load volunteer data
-    volunteer_data <- read.csv("countiesimpact.csv")
-    
-    volunteer_count <- volunteer_data %>%
+    # ✅ Load and clean volunteer data (exclude "did not log hours")
+    volunteer_data <- read.csv("countiesimpact.csv") %>%
+      filter(Hours != "did not log hours") %>%  # Capitalized 'Hours'
       mutate(
         County = tolower(County),
         County = gsub(" county", "", County),
@@ -89,7 +88,7 @@ server <- function(input, output, session) {
       select(County, Population)
     
     # Merge volunteer and population data
-    combined_data <- left_join(volunteer_count, va_population, by = "County") %>%
+    combined_data <- left_join(volunteer_data, va_population, by = "County") %>%
       mutate(
         VolunteerRate = round((Volunteers / Population) * 100, 2)
       )
@@ -98,9 +97,9 @@ server <- function(input, output, session) {
     map_data <- left_join(va_counties, combined_data, by = "County") %>%
       st_as_sf()
     
-    # Define bin breaks every 0.5% from 0 to max
-    max_rate <- ceiling(max(map_data$VolunteerRate, na.rm = TRUE) * 2) / 2
-    breaks <- seq(0, max_rate, by = 0.5)
+    # Define bin breaks every 0.25% from 0 to max
+    max_rate <- ceiling(max(map_data$VolunteerRate, na.rm = TRUE) * 4) / 4
+    breaks <- seq(0, max_rate, by = 0.25)
     
     pal <- colorBin("YlGnBu", domain = map_data$VolunteerRate, bins = breaks, na.color = "#f0f0f0")
     
@@ -113,7 +112,7 @@ server <- function(input, output, session) {
         "Volunteer Rate: ", ifelse(is.na(VolunteerRate), "N/A", paste0(VolunteerRate, "%"))
       ))
     
-    # Render Leaflet map (Percentage only)
+    # Render Leaflet map
     output$volunteer_map <- renderLeaflet({
       leaflet(map_data) %>%
         addProviderTiles("CartoDB.Positron") %>%
@@ -158,5 +157,4 @@ server <- function(input, output, session) {
 
 # === RUN ===
 shinyApp(ui = ui, server = server)
-
 
