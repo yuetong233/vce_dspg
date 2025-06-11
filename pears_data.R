@@ -261,3 +261,83 @@ write_xlsx(selected_data, "counties_and_demographics_june_11.xlsx")
 combined_df <- bind_cols(ethnicity_totals_virginia_PEARS, counties_and_demographics_june_11)
 
 #COMBINING THEM DOESN'T WORK, SINCE THEY HAVE DIFFERING NUMBERS OF ROWS
+
+#TRYING AGAIN
+library(tidyverse)
+library(dplyr)
+library(readxl)
+install.packages("purrr")
+library(purrr)
+
+merged_counties_demographics <- bind_rows(counties_and_demographics_june_11, ethnicity_totals_virginia_PEARS, )
+cleaned_merged_counties_demographics <- na.omit(merged_counties_demographics)
+rm(cleaned_merged_counties_demographics)
+
+clean_df <- na.omit(merged_counties_demographics$`Ethnicity/Race`)
+clean_df
+
+rm(clean_df)
+
+rm(merged_counties_demographics)
+rm(ethnicity_totals_virginia)
+rm(selected_data)
+rm(Participation_2021_2022,Participation_2022_2023,Participation_2023_2024,Participation_2024_2025_thru_June_2)
+
+rm(Combined_Participation_Counts)
+total_4h_participation <- Combined_Participation_Counts
+
+#ALL IN ALL, MERGING THESE DATA SETS IS POSSIBLE, BUT NOT USER FRIENDLY.
+#I MAY TRY AGAIN, BUT I THINK IT WOULD BE MORE WORTHWHILE TO GET ALL THE DATA
+#WHIDDLED DOWN TO A USER FRIENDLY TABLE
+
+#LOOK AT DATA BY COUNTY, BY ETHNICITY, AND COMPARE TO CENSUS DATA TO SEE THE 
+#PROPORTION OF PARTICIPANTS PARTICIPATING VS. THE POPULATION
+
+# Example: aggregate data by 'County'
+counties_and_demographics_june_11 <- counties_and_demographics_june_11 %>%
+  rename("Event Held At" = "site_name",
+         "Event Site City" = "site_city",
+         "Event Site County" = "site_county",
+         "Event Site Zipcode" = "site_zip",
+         "Who Participated" = "site_setting",
+         "Number of Sessions" = "number_sessions",
+         "Number of Volunteers" = "num_volunteers",
+         "Volunteering Hours" = "total_volunteer_hours",
+         "Total Participants" = "participants_total",
+         "Male Participants" = "participants_gender_male",
+         "Female Participants" = "participants_gender_female",
+         "Non-Binary Participants" = "participants_gender_non_binary",
+         "Gender Prefer Not to Respond" = "participants_gender_prefer_not_to_respond",
+         "Youth-Aged Participants" = "participants_age_youth",
+         "Aged 1-5" = "participants_age_lt5",
+         "Aged 5-7" = "participants_age_5to7",
+         "Aged 8-10" = "participants_age_8to10",
+         "Aged 11-13" = "participants_age_11to13",
+         "Aged 14-17" = "participants_age_14to17",
+         "Aged 18-29" = "participants_age_18to29",
+         "Aged 30-59" = "participants_age_30to59",
+         "Aged 60-75" = "participants_age_60to75",
+         "Aged 76+" = "participants_age_76plus",
+         "Adult Aged Participants" = "participants_age_adult",
+         "Total Hispanic Population" = "participants_ethnicity_hispanic",
+         "Total Non-Hispanic Population" = "participants_ethnicity_non_hispanic",
+         "Ethnicity Prefer Not to Respond" = "participants_ethnicity_prefer_not_to_respond",
+         "Total Participation - Unknown Ethnicity" = "participants_ethnicity_unknown",
+         "Total Native American Participation - One Race" = "participants_amerind_onerace_total",
+         "Total Native American Participation - Multirace" = "participants_amerind_multirace_total",
+         "Total Asian Participation - One Race" = "participants_asian_onerace_total",
+         "Total Asian Participation - Multirace" = "participants_asian_multirace_total",
+         "Total African American Participation - One Race" = "participants_black_onerace_total",
+         "Total African American Participation - Multirace" = "participants_black_multirace_total",
+         "Total Hawaiian/Pacific Islander Participation - One Race" = "participants_hawpac_onerace_total",
+         "Total Hawaiian/Pacific Islander Participation - Multirace" = "participants_hawpac_multirace_total",
+         "Total White Participation - One Race" = "participants_white_onerace_total",
+         "Total White Participation - Multirace" = "participants_white_multirace_total",
+         "Attendees Reported as Native American" = "participants_race_amerind",
+         "Attendees Reported as Asian" = "participants_race_asian",
+         "Attendees Reported as African American" = "participants_race_black",
+         "Attendees Reported as Hawaiian/Pacific Islander" = "participants_race_hawpac",
+         "Attendees Reported as White" = "participants_race_white",
+         "Attendees Reported as Having Two or More Races" = "participants_race_two_or_more",
+         "Race Preferred Not to Respond" = "participants_race_prefer_not_to_respond",
+         "Unknown" = "participants_race_unknown")
