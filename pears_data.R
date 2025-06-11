@@ -67,12 +67,21 @@ participants_race_unknown <- sum(program_activities_ethnicity_count$participants
 total_participation <- sum(ethnicity_totals_statewide)
 
 ethnicity_totals <- rbind(total_hispanic,total_non_hispanic,total_unknown_ethnicity,total_onerace_native_american,
+
       total_multirace_native_american,total_asian_onerace,total_asian_multirace,
       total_black_onerace,total_black_multirace,total_hawpac_onerace, total_hawpac_multirace_updated,
       total_white_onerace,total_white_multirace,participants_race_nativeamerican,
     participants_race_asian, participants_race_black, participants_race_hawpac,
     participants_race_white,participants_race_two_or_more, participants_race_no_response,
     participants_race_unknown)
+
+                          total_multirace_native_american,total_asian_onerace,total_asian_multirace
+                          total_black_onerace,total_black_multirace,total_hawpac_onerace, total_hawpac_multirace_updated
+                          total_white_onerace,total_white_multirace,participants_race_nativeamerican
+                          participants_race_asian, participants_race_black, participants_race_hawpac
+                          participants_race_white,participants_race_two_or_more, participants_race_no_response
+                          participants_race_unknown
+
 
 ethnicity_totals_statewide <- ethnicity_totals
 
@@ -81,6 +90,7 @@ ethnicity_totals_statewide <- ethnicity_totals
 install.packages("DataExplorer")
 library(DataExplorer)
 interactive_data_table <- data.frame(list("Total Hispanic Participation" = total_hispanic, "Total Non-Hispanic Participants" = total_non_hispanic,
+
                "Total Participants of Unknown Ethnicity" = total_unknown_ethnicity,
                "Participants Ethnicity - Prefer Not To Respond" = test_do_not_reference,
                "Total Participants of Native American Descent - One Race" = total_onerace_native_american,
@@ -101,6 +111,28 @@ interactive_data_table <- data.frame(list("Total Hispanic Participation" = total
                "Participants Race - Two or More" = participants_race_two_or_more,
                "Participants Race - No Response" = participants_race_no_response,
                "Participants Race - Unknown" = participants_race_unknown))
+
+                                          "Total Participants of Unknown Ethnicity" = total_unknown_ethnicity
+                                          "Participants Ethnicity - Prefer Not To Respond" = test_do_not_reference
+                                          "Total Participants of Native American Descent - One Race" = total_onerace_native_american
+                                          "Total Participants of Native American Descent - Multirace" = total_multirace_native_american
+                                          "Total Participants Asian Descent - One Race" = total_asian_onerace
+                                          "Total Participants of Asian Descent - Multirace" = total_asian_multirace
+                                          "Total Participants - African American, One Race" = total_black_onerace
+                                          "Total Participants - African American, Multirace" = total_black_multirace
+                                          "Total Participants - Hawaiian/Pacific Islander - One Race" = total_hawpac_onerace
+                                          "Total Participants - Hawaiian/Pacific Islander - Multirace" = total_hawpac_multirace_updated
+                                          "Total Participants - White, One Race" = total_white_onerace
+                                          "Total Participants - White, Multirace" = total_white_multirace
+                                          "Participants Race - Native American" = participants_race_nativeamerican
+                                          "Participants Race - Asian" = participants_race_asian
+                                          "Participants Race - Black" = participants_race_black
+                                          "Participants Race - Hawaiian/Pacific Islander" = participants_race_hawpac
+                                          "Participants Race - White" = participants_race_white
+                                          "Participants Race - Two or More" = participants_race_two_or_more
+                                          "Participants Race - No Response" = participants_race_no_response
+                                          "Participants Race - Unknown" = participants_race_unknown
+
 
 row.names(ethnicity_totals_statewide) <- c("Total Hispanic Participation", "Total Non-Hispanic Participation",
                                            "Total Participation - Unknown Ethnicity", "Total Native American Participation - One Race",
@@ -133,3 +165,99 @@ new_sheet <- cbind.data.frame(new_column_values, ethnicity_totals_statewide)
 
 new_sheet2 <- rbind(new_sheet, ethnicity_totals_statewide)
 
+
+# June 10 2025 ------------------------------------------------------------
+
+#WILL BE WORKING TO DRAW IN MORE CENSUS VARIABLES, AND OVERLAY
+#OVERLAY THEM WITH 4-H ATTENDANCE, AND ACTION PLAN ATTENDANCE
+#BY ETHNICITY
+
+#CHANGING THE YEARS COLUMN IN THIS EXCEL SHEET
+
+# Define mapping vector
+date_mapping <- c("4/1/2020", "7/1/2020", "7/1/2021", "7/1/2022", "7/1/2023")
+
+
+# Assuming your data frame is called df and the column is 'years'
+va_demographics$YEAR <- date_mapping[va_demographics$YEAR]
+
+install.packages("openxlsx")
+library(openxlsx)
+
+setwd("C:\Users\jeffr\Desktop\diego_and_jeffrey_initial_vce_data")
+
+getwd()
+write.xlsx(va_demographics, "va_demographics_updated.xlsx")
+
+#TESTING TESTING TESTING
+
+
+# June 11 2025 ------------------------------------------------------------
+
+
+#IMPORTING THE PEARS RAW DATA, AND SELECTING THE COUNTY, SCHOOL, GENDER, AND AGE COLUMNS
+install.packages("readxl")
+library(readxl)
+
+#INSTALLING RELEVANT PACKAGES, THEN MAKING DATA FRAME
+
+install.packages("readxl")
+install.packages("dplyr")
+library(readxl)
+library(dplyr)
+
+counties_and_participation <- read_excel("PEARS Raw Data 5.23.25.xlsx", sheet = "Program Activities")
+rm(countyies_and_participation)
+
+selected_data <- counties_and_participation %>%
+  select(site_name, site_city, site_county, site_zip, site_setting, number_sessions, 
+         num_volunteers, total_volunteer_hours, participants_total, participants_gender_male, participants_gender_female,
+         participants_gender_non_binary, participants_gender_prefer_not_to_respond,participants_age_youth,
+         participants_age_lt5, participants_age_5to7, participants_age_8to10, participants_age_11to13,
+         participants_age_14to17, participants_age_18to29, participants_age_30to59, participants_age_60to75,
+         participants_age_76plus, participants_age_adult, participants_ethnicity_hispanic,
+         participants_ethnicity_non_hispanic,
+         participants_ethnicity_prefer_not_to_respond,
+         participants_ethnicity_unknown,
+         participants_amerind_onerace_total,
+         participants_amerind_multirace_total,
+         participants_asian_onerace_total,
+         participants_asian_multirace_total,
+         participants_black_onerace_total,
+         participants_black_multirace_total,
+         participants_hawpac_onerace_total,
+         participants_hawpac_multirace_total,
+         participants_white_onerace_total,
+         participants_white_multirace_total,
+         participants_race_amerind,
+         participants_race_asian,
+         participants_race_black,
+         participants_race_hawpac,
+         participants_race_white,
+         participants_race_two_or_more,
+         participants_race_prefer_not_to_respond,
+         participants_race_unknown)
+
+
+
+#EDITING THE ETHNICITY TOTALS TABLE
+rm(ethnicity_totals_statewide, ethnicity_totals_virginia)
+
+ethnicity_totals_virginia <- read_excel("ethnicity_totals_statewide.xlsx", col_names = FALSE)
+colnames(ethnicity_totals_virginia) <- c("Ethnicity/Race", "Totals")
+
+print(colnames(ethnicity_totals_virginia))
+
+library(writexl)
+
+write_xlsx(ethnicity_totals_virginia, "ethnicity_totals_virginia_PEARS.xlsx")
+
+#SUCCESS ^^^
+
+#WHAT I WANT TO DO NOW IS TO COMBINE THE DATA SHEETS TO SHOW THEM BOTH SIDE BY SIDE
+
+write_xlsx(selected_data, "counties_and_demographics_june_11.xlsx")
+
+combined_df <- bind_cols(ethnicity_totals_virginia_PEARS, counties_and_demographics_june_11)
+
+#COMBINING THEM DOESN'T WORK, SINCE THEY HAVE DIFFERING NUMBERS OF ROWS
