@@ -1,4 +1,4 @@
-# === LIBRARIES ===
+# LIBRARIES 
 library(shiny)
 library(shinyWidgets)
 library(bslib)
@@ -11,7 +11,7 @@ library(tidycensus)
 
 options(tigris_use_cache = TRUE)
 
-# === UI ===
+# UI 
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
   
@@ -41,13 +41,13 @@ ui <- fluidPage(
   )
 )
 
-# === SERVER ===
+# SERVER 
 server <- function(input, output, session) {
   tryCatch({
-    # Set Census API Key (Replace with your actual key)
+    # Set Census API Key 
     census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
     
-    # Load and clean volunteer data (exclude "did not log hours")
+    # Clean volunteer data (exclude "did not log hours")
     volunteer_data <- read.csv("countiesimpact.csv") %>%
       filter(Hours != "did not log hours") %>%  # Capitalized 'Hours'
       mutate(
@@ -59,7 +59,7 @@ server <- function(input, output, session) {
       group_by(County) %>%
       summarise(Volunteers = n(), .groups = "drop")
     
-    # Load VA counties shapefile
+    # Load VA counties 
     va_counties <- counties(state = "VA", cb = TRUE, year = 2023) %>%
       st_transform(crs = 4326) %>%
       mutate(
@@ -68,7 +68,7 @@ server <- function(input, output, session) {
         County = trimws(County)
       )
     
-    # Get population from ACS and handle cities
+    # Get population from ACS and cities
     va_population <- get_acs(
       geography = "county",
       state = "VA",
@@ -96,13 +96,13 @@ server <- function(input, output, session) {
     map_data <- left_join(va_counties, combined_data, by = "County") %>%
       st_as_sf()
     
-    # Define bin breaks every 0.25% from 0 to max
+    # Define scale every 0.25% from 0 to max
     max_rate <- ceiling(max(map_data$VolunteerRate, na.rm = TRUE) * 4) / 4
     breaks <- seq(0, max_rate, by = 0.25)
     
     pal <- colorBin("YlGnBu", domain = map_data$VolunteerRate, bins = breaks, na.color = "#f0f0f0")
     
-    # Prepare label content
+    # Label content
     map_data <- map_data %>%
       mutate(label_content = paste0(
         "<strong>", toupper(County), "</strong><br>",
