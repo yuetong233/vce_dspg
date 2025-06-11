@@ -32,12 +32,11 @@ ui <- fluidPage(
              p("Monitor the county data for volunteers"),
              
              leafletOutput("volunteer_map", height = "600px"),
-             verbatimTextOutput("debug"),
              textOutput("error")
     ),
     
-    tabPanel("Another Tab",
-             p("More content here.")
+    tabPanel("4-H Data",
+             p("More tables to come!!")
     )
   )
 )
@@ -48,7 +47,7 @@ server <- function(input, output, session) {
     # Set Census API Key (Replace with your actual key)
     census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
     
-    # ✅ Load and clean volunteer data (exclude "did not log hours")
+    # Load and clean volunteer data (exclude "did not log hours")
     volunteer_data <- read.csv("countiesimpact.csv") %>%
       filter(Hours != "did not log hours") %>%  # Capitalized 'Hours'
       mutate(
