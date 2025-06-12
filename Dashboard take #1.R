@@ -1,4 +1,4 @@
-# LIBRARIES 
+# === LIBRARIES ===
 library(shiny)
 library(shinyWidgets)
 library(bslib)
@@ -11,7 +11,7 @@ library(tidycensus)
 
 options(tigris_use_cache = TRUE)
 
-# UI 
+# === UI ===
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
   
@@ -41,15 +41,15 @@ ui <- fluidPage(
   )
 )
 
-# SERVER 
+# === SERVER ===
 server <- function(input, output, session) {
   tryCatch({
-    # Set Census API Key 
+    # Set Census API Key
     census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
     
-    # Clean volunteer data (exclude "did not log hours")
+    # Clean volunteer data
     volunteer_data <- read.csv("countiesimpact.csv") %>%
-      filter(Hours != "did not log hours") %>%  # Capitalized 'Hours'
+      filter(Hours != "did not log hours") %>%
       mutate(
         County = tolower(County),
         County = gsub(" county", "", County),
@@ -59,7 +59,7 @@ server <- function(input, output, session) {
       group_by(County) %>%
       summarise(Volunteers = n(), .groups = "drop")
     
-    # Load VA counties 
+    # Load VA counties
     va_counties <- counties(state = "VA", cb = TRUE, year = 2023) %>%
       st_transform(crs = 4326) %>%
       mutate(
@@ -68,11 +68,11 @@ server <- function(input, output, session) {
         County = trimws(County)
       )
     
-    # Get population from ACS and cities
+    # Load population data with correct naming and Fairfax fix
     va_population <- get_acs(
       geography = "county",
       state = "VA",
-      variables = "B01003_001",  # Total population
+      variables = "B01003_001",
       year = 2022,
       survey = "acs5",
       output = "wide"
@@ -84,25 +84,31 @@ server <- function(input, output, session) {
         County = trimws(County),
         Population = B01003_001E
       ) %>%
+      # Manually fix Fairfax County population
+      mutate(
+        Population = ifelse(County == "fairfax", 1147532, Population),
+        Population = ifelse(County == "franklin", 54477, Population)
+      ) %>%
       select(County, Population)
     
-    # Merge volunteer and population data
+    # Merge data
     combined_data <- left_join(volunteer_data, va_population, by = "County") %>%
       mutate(
         VolunteerRate = round((Volunteers / Population) * 100, 2)
       )
     
-    # Join with map data
     map_data <- left_join(va_counties, combined_data, by = "County") %>%
       st_as_sf()
     
-    # Define scale every 0.25% from 0 to max
-    max_rate <- ceiling(max(map_data$VolunteerRate, na.rm = TRUE) * 4) / 4
+    # Safe color scale
+    max_rate <- max(map_data$VolunteerRate, na.rm = TRUE)
+    if (!is.finite(max_rate)) max_rate <- 1
+    max_rate <- ceiling(max_rate * 4) / 4
     breaks <- seq(0, max_rate, by = 0.25)
     
     pal <- colorBin("YlGnBu", domain = map_data$VolunteerRate, bins = breaks, na.color = "#f0f0f0")
     
-    # Label content
+    # Labels
     map_data <- map_data %>%
       mutate(label_content = paste0(
         "<strong>", toupper(County), "</strong><br>",
@@ -111,7 +117,7 @@ server <- function(input, output, session) {
         "Volunteer Rate: ", ifelse(is.na(VolunteerRate), "N/A", paste0(VolunteerRate, "%"))
       ))
     
-    # Render Leaflet map
+    # Map
     output$volunteer_map <- renderLeaflet({
       leaflet(map_data) %>%
         addProviderTiles("CartoDB.Positron") %>%
@@ -137,7 +143,7 @@ server <- function(input, output, session) {
         setView(lng = -78.6569, lat = 37.4316, zoom = 6)
     })
     
-    # Debugging Info
+    # Debug info
     output$debug <- renderPrint({
       list(
         n_counties = nrow(map_data),
@@ -156,4 +162,3 @@ server <- function(input, output, session) {
 
 # === RUN ===
 shinyApp(ui = ui, server = server)
-
