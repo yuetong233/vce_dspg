@@ -73,7 +73,7 @@ server <- function(input, output, session) {
       geography = "county",
       state = "VA",
       variables = "B01003_001",
-      year = 2022,
+      year = 2023,
       survey = "acs5",
       output = "wide"
     ) %>%
@@ -162,3 +162,4 @@ server <- function(input, output, session) {
 
 # === RUN ===
 shinyApp(ui = ui, server = server)
+
