@@ -11,7 +11,7 @@ library(tidycensus)
 
 options(tigris_use_cache = TRUE)
 
-# === UI ===
+# UI 
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
   
@@ -41,7 +41,7 @@ ui <- fluidPage(
   )
 )
 
-# === SERVER ===
+# SERVER
 server <- function(input, output, session) {
   tryCatch({
     # Set Census API Key
@@ -68,7 +68,7 @@ server <- function(input, output, session) {
         County = trimws(County)
       )
     
-    # Load population data with correct naming and Fairfax fix
+    # Load population data 
     va_population <- get_acs(
       geography = "county",
       state = "VA",
@@ -84,14 +84,14 @@ server <- function(input, output, session) {
         County = trimws(County),
         Population = B01003_001E
       ) %>%
-      # Manually fix Fairfax County population
+      # Fix Fairfax and Franklin County population
       mutate(
         Population = ifelse(County == "fairfax", 1147532, Population),
         Population = ifelse(County == "franklin", 54477, Population)
       ) %>%
       select(County, Population)
     
-    # Merge data
+    # Merging data
     combined_data <- left_join(volunteer_data, va_population, by = "County") %>%
       mutate(
         VolunteerRate = round((Volunteers / Population) * 100, 2)
@@ -100,7 +100,7 @@ server <- function(input, output, session) {
     map_data <- left_join(va_counties, combined_data, by = "County") %>%
       st_as_sf()
     
-    # Safe color scale
+    # Color scale
     max_rate <- max(map_data$VolunteerRate, na.rm = TRUE)
     if (!is.finite(max_rate)) max_rate <- 1
     max_rate <- ceiling(max_rate * 4) / 4
@@ -160,6 +160,7 @@ server <- function(input, output, session) {
   })
 }
 
-# === RUN ===
+# Running the Website
 shinyApp(ui = ui, server = server)
+
 
