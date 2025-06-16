@@ -1,5 +1,4 @@
-# LIBRARIES 
-
+# === LIBRARIES ===
 library(shiny)
 
 library(shinyWidgets)
@@ -60,9 +59,9 @@ ui <- fluidPage(
     
     tabPanel("Volunteer County Data",
              
-             h3("Volunteer Data"),
+             h3("County Data"),
              
-             p("Monitor the county data for 4-H volunteers"),
+             p("Monitor the county data for volunteers"),
              
              
              
@@ -72,23 +71,28 @@ ui <- fluidPage(
     
     
     
-    tabPanel("Participant County Data",
-            h3("Participation Data"),
+    tabPanel("Participation County Data",
+             h3("Participation Data"),
              
-             p("Monitor the data for participants in 4-H Programs"),
+             p("Monitor the county data for participants"),
              tableOutput("fourh_totals"),
              leafletOutput("fourh_map", height = "600px")
              
     ),
-    tabPanel("Participant County Data",
-             h3("Participation Data"),
+    
+    tabPanel("Demographic Data",
              
-             p("Monitor the data for participants in 4-H Programs"),
-             tableOutput("fourh_totals"),
-             leafletOutput("fourh_map", height = "600px")  
+             h3("Program Participation Demographics"),
+             
+             p("View demographic distribution across counties"),
+             
+             leafletOutput("demographic_map", height = "600px")
+             
+    )
+    
   )
   
-))
+)
 
 
 
@@ -246,6 +250,81 @@ server <- function(input, output, session) {
                 pal = fourh_pal,
                 values = fourh_map_data$Total,
                 title = "4-H Participants",
+                opacity = 1
+      ) %>%
+      setView(lng = -78.6569, lat = 37.4316, zoom = 6)
+  })
+  
+  # --- Demographic Data Map ---
+  # Read and process demographic data
+  demographic_data <- read_csv("countiesdemographics.csv") %>%
+    group_by(site_county) %>%
+    summarise(
+      total_participants = sum(participants_total, na.rm = TRUE)
+    ) %>%
+    mutate(
+      County = tolower(site_county),
+      County = gsub(" county", "", County),
+      County = gsub(" city", "", County),
+      County = trimws(County)
+    )
+  
+  # Read population data
+  population_data <- read_csv("virginia2024population.csv", skip = 2, col_names = c("State_County", "Population")) %>%
+    filter(!is.na(Population)) %>%
+    mutate(
+      County = tolower(State_County),
+      County = gsub(" county, virginia", "", County),
+      County = gsub(" city, virginia", "", County),
+      County = gsub("^.", "", County),  # Remove leading dot
+      County = trimws(County),
+      Population = as.numeric(Population)
+    ) %>%
+    select(County, Population)
+  
+  # Join demographic data with population data
+  demographic_data <- left_join(demographic_data, population_data, by = "County") %>%
+    mutate(
+      participation_rate = (total_participants / Population) * 100
+    )
+  
+  # Join with VA counties shapefile
+  demographic_map_data <- left_join(va_counties, demographic_data, by = "County") %>%
+    st_as_sf()
+  
+  # Define color palette for demographic map
+  demographic_pal <- colorBin("YlOrRd", domain = demographic_map_data$participation_rate, bins = 5, na.color = "#f0f0f0")
+  
+  # Labels for demographic map
+  demographic_map_data <- demographic_map_data %>%
+    mutate(demographic_label_content = paste0(
+      "<strong>", toupper(County), "</strong><br>",
+      "Total Participants: ", ifelse(is.na(total_participants), "N/A", total_participants), "<br>",
+      "County Population: ", ifelse(is.na(Population), "N/A", format(Population, big.mark=",")), "<br>",
+      "Participation Rate: ", ifelse(is.na(participation_rate), "N/A", paste0(round(participation_rate, 2), "%"))
+    ))
+  
+  # Render demographic Leaflet map
+  output$demographic_map <- renderLeaflet({
+    leaflet(demographic_map_data) %>%
+      addProviderTiles("CartoDB.Positron") %>%
+      addPolygons(
+        fillColor = ~demographic_pal(participation_rate),
+        color = "black",
+        weight = 1,
+        fillOpacity = 0.7,
+        label = lapply(demographic_map_data$demographic_label_content, htmltools::HTML),
+        highlightOptions = highlightOptions(
+          weight = 2,
+          color = "#666",
+          fillOpacity = 0.9,
+          bringToFront = TRUE
+        )
+      ) %>%
+      addLegend("bottomright",
+                pal = demographic_pal,
+                values = demographic_map_data$participation_rate,
+                title = "Participation Rate (%)",
                 opacity = 1
       ) %>%
       setView(lng = -78.6569, lat = 37.4316, zoom = 6)
