@@ -1,4 +1,4 @@
-# === LIBRARIES ===
+# LIBRARIES 
 
 library(shiny)
 
@@ -60,9 +60,9 @@ ui <- fluidPage(
     
     tabPanel("Volunteer County Data",
              
-             h3("County Data"),
+             h3("Volunteer Data"),
              
-             p("Monitor the county data for volunteers"),
+             p("Monitor the county data for 4-H volunteers"),
              
              
              
@@ -73,16 +73,22 @@ ui <- fluidPage(
     
     
     tabPanel("Participant County Data",
+            h3("Participation Data"),
              
-             p("More tables to come!!"),
+             p("Monitor the data for participants in 4-H Programs"),
              tableOutput("fourh_totals"),
              leafletOutput("fourh_map", height = "600px")
              
-    )
-    
+    ),
+    tabPanel("Participant County Data",
+             h3("Participation Data"),
+             
+             p("Monitor the data for participants in 4-H Programs"),
+             tableOutput("fourh_totals"),
+             leafletOutput("fourh_map", height = "600px")  
   )
   
-)
+))
 
 
 
