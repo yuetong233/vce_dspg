@@ -20,13 +20,13 @@ clean_county <- function(x) {
     trimws()
 }
 
-# === UI ===
+# UI 
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
   tags$head(tags$style(HTML("
     h1, h2, h3, h4 { color:#2e7d32; font-weight:bold; }
   "))),
-  h1("Exploring Volunteer Engagement in Virginia 4-H Programs"),
+  h1("Exploring Engagement in Virginia 4-H Programs"),
   tabsetPanel(
     # Home Tab
     tabPanel("Home",
@@ -57,7 +57,7 @@ ui <- fluidPage(
                        "aims to give VCE stakeholders a clearer picture of community needs and how best to direct ",
                        "future outreach and support.")
                
-             
+               
              ),
              h3("How to Use This Dashboard"),
              tags$ol(
@@ -77,7 +77,7 @@ ui <- fluidPage(
     ),
     # Tabs
     tabPanel("Volunteer County Data",
-             h3("County Data"),
+             h3("Volunteer Data"),
              p("Monitor the county data for volunteers"),
              leafletOutput("volunteer_map", height = "600px")
     ),
@@ -99,13 +99,13 @@ ui <- fluidPage(
   )
 )
 
-# SERVER 
+# SERVER
 server <- function(input, output, session) {
   
   census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7",
                  install = TRUE, overwrite = TRUE)
   
-  # Volunteers 
+  # Volunteers
   volunteer_data <- read_csv("countiesimpact.csv") %>%
     filter(Hours != "did not log hours") %>%
     mutate(County = clean_county(County)) %>%
@@ -125,7 +125,7 @@ server <- function(input, output, session) {
     mutate(Population = ifelse(County == "fairfax", 1147532, Population),
            Population = ifelse(County == "franklin",  54477,  Population))
   
-  # Volunteer map 
+  # Volunteer map
   volunteer_map_data <- left_join(volunteer_data, va_population, "County") %>%
     mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
     left_join(va_counties, ., "County") %>% st_as_sf()
@@ -147,7 +147,7 @@ server <- function(input, output, session) {
   
   output$volunteer_map <- renderLeaflet({
     leaflet(volunteer_map_data) %>%
-      addProviderTiles("CartoDB.Positron") %>% 
+      addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
         fillColor = ~pal_vol(VolunteerRate),
         color = "black", weight = 1, fillOpacity = 0.7,
@@ -160,7 +160,7 @@ server <- function(input, output, session) {
                 title="Volunteers as % of Pop.", opacity=1)
   })
   
-  # 4-H Participation 
+  # 4-H Participation
   fourh_raw <- read_csv("annualprogreport.csv")
   fourh_data <- fourh_raw %>%
     mutate(
@@ -179,7 +179,7 @@ server <- function(input, output, session) {
   
   output$fourh_map <- renderLeaflet({
     leaflet(fourh_map_data) %>%
-      addProviderTiles("CartoDB.Positron") %>% 
+      addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
         fillColor = ~pal_4h(Total),
         color = "black", weight = 1, fillOpacity = 0.7,
@@ -191,7 +191,7 @@ server <- function(input, output, session) {
                 title="4-H Participants", opacity=1)
   })
   
-  # Volunteers vs Participants 
+  # Volunteers vs Participants
   ratio_df <- full_join(
     volunteer_data,
     fourh_data %>% select(County, Participants = Total),
@@ -202,7 +202,7 @@ server <- function(input, output, session) {
   
   ratio_map_data <- left_join(va_counties, ratio_df, "County") %>% st_as_sf()
   
-  # Color Scale: change every 100% 
+  # Color Scale: change every 100%
   max_ratio  <- max(ratio_map_data$RatioVP, na.rm = TRUE)
   breaks_100 <- seq(0, ceiling(max_ratio / 100) * 100, by = 100)
   
@@ -224,7 +224,7 @@ server <- function(input, output, session) {
   
   output$vol_particip_map <- renderLeaflet({
     leaflet(ratio_map_data) %>%
-      addProviderTiles("CartoDB.Positron") %>% 
+      addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
         fillColor = ~pal_ratio(RatioVP),
         color = "black", weight = 1, fillOpacity = 0.7,
@@ -238,7 +238,7 @@ server <- function(input, output, session) {
                 opacity=1)
   })
   
-  # Demographic Map 
+  # Demographic Map
   demographic_data <- read_csv("countiesdemographics.csv") %>%
     group_by(site_county) %>%
     summarise(total_participants = sum(participants_total, na.rm = TRUE)) %>%
@@ -282,7 +282,7 @@ server <- function(input, output, session) {
   
   output$demographic_map <- renderLeaflet({
     leaflet(demographic_map_data) %>%
-      addProviderTiles("CartoDB.Positron") %>% 
+      addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
         fillColor = ~pal_demo(participation_rate),
         color = "black", weight = 1, fillOpacity = 0.7,
@@ -296,7 +296,5 @@ server <- function(input, output, session) {
   })
 }
 
-# === RUN APP ===
+# RUN APP 
 shinyApp(ui, server)
-
-
