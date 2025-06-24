@@ -53,9 +53,9 @@ ultra_cleaned_demographic_sheet2 <- ultra_cleaned_demographic_sheet2 %>%
 setwd("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\Clean Data")
 write.xlsx(summary_df, "cleaned_demographic_sheet_6.12.25.xlsx")
 
-cleaned_demographic_sheet <- summary_df
+cleaned_demographic_sheet_6_16_25 <- cleaned_demographic_sheet_6_12_25
 
-ultra_cleaned_demographic_sheet2 <- ultra_cleaned_demographic_sheet2 %>%
+cleaned_demographic_sheet_6_16_25 <- cleaned_demographic_sheet_6_16_25 %>%
   rename("Total Volunteers" = "total_volunteers",
          "Total Volunteer Hours" = "total_hours",
          "Total Participants" = "total_participants",
@@ -241,4 +241,55 @@ setwd("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\Clean Data")
 
 merged_data_june16_2025 <- bind_rows(june16_cleaned_data, county_populations_virginia_2020_2024)
 
+write_xlsx(cleaned_demographic_sheet_6_16_25, "cleaned_demographic_sheet_6_16_25.xlsx")
+getwd()
 
+
+# Create the "VolunteersReported" column
+counties_and_demographics_june_11$volunteers_reported_hours <- !is.na(counties_and_demographics_june_11$total_volunteer_hours)
+
+# Create the "VolunteersNotReported" column
+counties_and_demographics_june_11$volunteers_no_report_hours <- is.na(counties_and_demographics_june_11$total_volunteer_hours)
+
+# Create the "NoVolunteerData" column
+counties_and_demographics_june_11$no_volunteer_data <- is.na(counties_and_demographics_june_11$num_volunteers)
+
+
+
+# Specify the column names you want to move:
+cols_to_move <- c("volunteers_reported_hours", "volunteers_no_report_hours", "no_volunteer_data")
+
+# Get current column names
+current_cols <- colnames(counties_and_demographics_june_11)
+current_cols
+
+# Remove the columns to move from current columns
+remaining_cols <- setdiff(current_cols, cols_to_move)
+
+# Create the new column order:
+# Place the three columns in positions 9, 10, 11
+new_order <- c(remaining_cols[1:8], cols_to_move, remaining_cols[9:length(remaining_cols)])
+
+# Reorder the data frame
+counties_and_demographics_june_11 <- counties_and_demographics_june_11[, new_order]
+is.data.frame(counties_and_demographics_june_11)
+print(new_order)
+
+getwd()
+write_xlsx(counties_and_demographics_june_11, "June16_cleaned_Data.xlsx")
+
+library(purrr)
+Merge_test3 <- bind_rows(counties_and_demographics_june_11, va_demographics_updated)
+
+
+library(dplyr)
+
+df_2024 <- county_populations_virginia_2020_2024 %>%
+  select(`table with row headers in column A and column headers in rows 3 through 4 (leading dots indicate sub-parts)`, ...7)
+
+
+df_2024 <- df_2024 %>%
+  rename( "State, County" = "table with row headers in column A and column headers in rows 3 through 4 (leading dots indicate sub-parts)",
+         "Population" = "...7")
+
+write_xlsx(df_2024, "Virginia_Population_2024.xlsx")
