@@ -1,4 +1,4 @@
-# LIBRARIES
+# === LIBRARIES ===
 library(shiny)
 library(shinyWidgets)
 library(bslib)
@@ -11,7 +11,7 @@ library(tidycensus)
 
 options(tigris_use_cache = TRUE)
 
-# HELPER
+# === HELPER FUNCTION ===
 clean_county <- function(x) {
   x %>%
     tolower() %>%
@@ -20,15 +20,12 @@ clean_county <- function(x) {
     trimws()
 }
 
-# UI 
+# === UI ===
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
-  tags$head(tags$style(HTML("
-    h1, h2, h3, h4 { color:#2e7d32; font-weight:bold; }
-  "))),
+  tags$head(tags$style(HTML("h1, h2, h3, h4 { color:#2e7d32; font-weight:bold; }"))),
   h1("Exploring Engagement in Virginia 4-H Programs"),
   tabsetPanel(
-    # Home Tab
     tabPanel("Home",
              h2("Welcome"),
              p("This dashboard visualizes volunteer engagement and 4-H participation ",
@@ -39,7 +36,6 @@ ui <- fluidPage(
                "and the populations served by existing programming, as well as potential demographic gaps ",
                "between volunteers and their communities at large. This project will be driven by American ",
                "Community Survey data and Virginia Cooperative Extension programming needs."),
-             
              h3("Methodology"),
              tags$ul(
                tags$li(strong("Data Sources:"),
@@ -56,13 +52,11 @@ ui <- fluidPage(
                        "Virginia Cooperative Extension’s resources are currently being allocated, this analysis ",
                        "aims to give VCE stakeholders a clearer picture of community needs and how best to direct ",
                        "future outreach and support.")
-               
-               
              ),
              h3("How to Use This Dashboard"),
              tags$ol(
-               tags$li(strong("Volunteer County Data:"), " View distribution of volunteers and comparison against the total population in different counties."),
-               tags$li(strong("Participation County Data:"), " Explore program reach by looking at the number of participants by county."),
+               tags$li(strong("Volunteer County Data:"), " View distribution of 4-H volunteers and comparison against the total population in different counties."),
+               tags$li(strong("Participation County Data:"), " Explore program reach by looking at the number of 4-H participants by county."),
                tags$li(strong("Volunteers vs Participation:"), " Comparison of volunteers vs participants in each county"),
                tags$li(strong("Demographic Data:"), " Comparison of participants in VCE programs and population across counties. ")
              ),
@@ -75,170 +69,182 @@ ui <- fluidPage(
              h3("Acknowledgments"),
              p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
     ),
-    # Tabs
+    
     tabPanel("Volunteer County Data",
              h3("Volunteer Data"),
-             p("Monitor the county data for volunteers"),
+             selectInput("selected_race", "Select Race:",
+                         choices = c("All" = "All", 
+                                     "White" = "05. White", 
+                                     "Black or African American" = "03. Black or African American",
+                                     "Asian" = "02. Asian",
+                                     "Two or more races" = "06. Two or more races",
+                                     "Prefer not to answer" = "08. Prefer not to answer",
+                                     "No Response" = "No Response"),
+                         selected = "All"),
              leafletOutput("volunteer_map", height = "600px")
     ),
+    
     tabPanel("Participation County Data",
              h3("Participation Data"),
-             p("Monitor the county data for participants"),
+             selectInput("selected_participation_group", "Select Group:",
+                         choices = c(
+                           "Hispanic" = "eHispanic",
+                           "Not Hispanic" = "eNotHispanic",
+                           "Ethnicity Not Provided" = "eNotProvided",
+                           "Prefer Not to State Ethnicity" = "ePreferNotToState",
+                           "White" = "rWhite",
+                           "Black or African American" = "rBlack",
+                           "American Indian or Alaskan Native" = "rIndianAlaskan",
+                           "Native Hawaiian or Pacific Islander" = "rHawaiianIslander",
+                           "Asian" = "rAsian",
+                           "Two or More Races" = "rMoreThanOne",
+                           "Race Undetermined" = "rUndetermined"
+                         )),
              leafletOutput("fourh_map", height = "600px")
     ),
+    
+    
     tabPanel("Volunteers vs Participation",
              h3("Volunteers as % of Participants"),
-             p("Volunteers divided by participants across Virginia counties"),
              leafletOutput("vol_particip_map", height = "600px")
     ),
+    
     tabPanel("Demographic Data",
              h3("Program Participation Demographics"),
-             p("View demographic distribution across counties"),
              leafletOutput("demographic_map", height = "600px")
     )
   )
 )
 
-# SERVER
+# === SERVER ===
 server <- function(input, output, session) {
   
-  census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7",
-                 install = TRUE, overwrite = TRUE)
-  
-  # Volunteers
-  volunteer_data <- read_csv("countiesimpact.csv") %>%
-    filter(Hours != "did not log hours") %>%
-    mutate(County = clean_county(County)) %>%
-    group_by(County) %>% summarise(Volunteers = n(), .groups = "drop")
+  census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
   
   va_counties <- counties("VA", cb = TRUE, year = 2023) %>%
     st_transform(4326) %>%
     mutate(County = clean_county(NAME))
   
-  va_population <- get_acs("county", state = "VA",
-                           variables = "B01003_001", year = 2023,
-                           survey = "acs5", output = "wide") %>%
-    transmute(
-      County     = clean_county(NAME),
-      Population = B01003_001E
-    ) %>%
+  va_population <- get_acs("county", state = "VA", variables = "B01003_001", year = 2023, survey = "acs5", output = "wide") %>%
+    transmute(County = clean_county(NAME), Population = B01003_001E) %>%
     mutate(Population = ifelse(County == "fairfax", 1147532, Population),
-           Population = ifelse(County == "franklin",  54477,  Population))
+           Population = ifelse(County == "franklin",  54477, Population))
   
-  # Volunteer map
-  volunteer_map_data <- left_join(volunteer_data, va_population, "County") %>%
-    mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
-    left_join(va_counties, ., "County") %>% st_as_sf()
-  
-  pal_vol <- colorBin(
-    "YlGnBu",
-    domain   = volunteer_map_data$VolunteerRate,
-    bins     = seq(0, ceiling(max(volunteer_map_data$VolunteerRate, na.rm=TRUE)*4)/4, 0.25),
-    na.color = "#f0f0f0"
-  )
-  
-  volunteer_map_data <- volunteer_map_data %>%
-    mutate(label_vol = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Volunteers: ", Volunteers, "<br>",
-      "Population: ", Population, "<br>",
-      "Volunteer Rate: ", VolunteerRate, "%"
-    ))
-  
-  output$volunteer_map <- renderLeaflet({
-    leaflet(volunteer_map_data) %>%
-      addProviderTiles("CartoDB.Positron") %>%
-      addPolygons(
-        fillColor = ~pal_vol(VolunteerRate),
-        color = "black", weight = 1, fillOpacity = 0.7,
-        label = lapply(volunteer_map_data$label_vol, htmltools::HTML),
-        highlightOptions = highlightOptions(weight=2,color="#666",
-                                            fillOpacity=0.9,bringToFront=TRUE)
-      ) %>%
-      addLegend("bottomright", pal=pal_vol,
-                values=volunteer_map_data$VolunteerRate,
-                title="Volunteers as % of Pop.", opacity=1)
-  })
-  
-  # 4-H Participation
-  fourh_raw <- read_csv("annualprogreport.csv")
-  fourh_data <- fourh_raw %>%
+  full_volunteer_data <- read_csv("countiesimpact.csv") %>%
+    filter(Hours != "did not log hours") %>%
     mutate(
-      County = clean_county(CountyArea),
-      Total  = rowSums(select(., starts_with("e") | starts_with("r")), na.rm = TRUE)
+      County = clean_county(County),
+      Race = `CF - Demographic Information - Race`
     )
   
-  fourh_map_data <- left_join(va_counties, fourh_data, "County") %>% st_as_sf()
-  pal_4h <- colorBin("Purples", domain = fourh_map_data$Total, bins = 5, na.color="#f0f0f0")
+  filtered_volunteer_data <- reactive({
+    if (input$selected_race == "All") {
+      full_volunteer_data
+    } else if (input$selected_race == "No Response") {
+      full_volunteer_data %>% filter(is.na(Race) | trimws(Race) == "")
+    } else {
+      full_volunteer_data %>% filter(Race == input$selected_race)
+    }
+  })
   
-  fourh_map_data <- fourh_map_data %>%
-    mutate(label_4h = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Total Participants: ", Total
-    ))
+  volunteer_map_data_reactive <- reactive({
+    volunteer_data <- filtered_volunteer_data() %>%
+      count(County, name = "Volunteers")
+    
+    left_join(volunteer_data, va_population, "County") %>%
+      mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
+      left_join(va_counties, ., "County") %>%
+      st_as_sf() %>%
+      mutate(label_vol = paste0("<strong>", toupper(County), "</strong><br>",
+                                "Volunteers: ", Volunteers, "<br>",
+                                "Population: ", Population, "<br>",
+                                "Volunteer Rate: ", VolunteerRate, "%"))
+  })
+  
+  output$volunteer_map <- renderLeaflet({
+    data <- volunteer_map_data_reactive()
+    if (nrow(data) == 0 || all(is.na(data$VolunteerRate))) {
+      leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
+        addPopups(lng = -78.6569, lat = 37.4316, popup = "No data available.")
+    } else {
+      pal <- colorBin("YlGnBu", domain = data$VolunteerRate,
+                      bins = seq(0, ceiling(max(data$VolunteerRate, na.rm=TRUE)*4)/4, 0.25),
+                      na.color = "#f0f0f0")
+      leaflet(data) %>%
+        addProviderTiles("CartoDB.Positron") %>%
+        addPolygons(fillColor = ~pal(VolunteerRate), color = "black", weight = 1,
+                    fillOpacity = 0.7, label = lapply(data$label_vol, htmltools::HTML),
+                    highlightOptions = highlightOptions(weight=2,color="#666",
+                                                        fillOpacity=0.9,bringToFront=TRUE)) %>%
+        addLegend("bottomright", pal=pal, values=data$VolunteerRate,
+                  title="Volunteers as % of Pop.", opacity=1)
+    }
+  })
+  
+  # === PARTICIPATION MAP ===
+  fourh_data <- reactive({
+    read_csv("annualprogreport.csv") %>%
+      mutate(
+        County = clean_county(CountyArea),
+        County = case_when(
+          County == "lynchburg" ~ "lynchburg city",
+          County == "fairfax" & grepl("city", CountyArea, ignore.case = TRUE) ~ "fairfax city",
+          TRUE ~ County
+        ),
+        Total = rowSums(select(., starts_with("e"), starts_with("r")), na.rm = TRUE)
+      )
+  })
   
   output$fourh_map <- renderLeaflet({
-    leaflet(fourh_map_data) %>%
+    req(input$selected_participation_group)
+    df <- left_join(va_counties, fourh_data(), "County") %>% st_as_sf()
+    values <- df[[input$selected_participation_group]]
+    values[is.na(values)] <- 0
+    pal <- colorBin("Purples", domain = values, bins = 5, na.color="#f0f0f0")
+    df <- df %>%
+      mutate(label_4h = paste0("<strong>", toupper(County), "</strong><br>",
+                               input$selected_participation_group, ": ", values))
+    leaflet(df) %>%
       addProviderTiles("CartoDB.Positron") %>%
-      addPolygons(
-        fillColor = ~pal_4h(Total),
-        color = "black", weight = 1, fillOpacity = 0.7,
-        label = lapply(fourh_map_data$label_4h, htmltools::HTML),
-        highlightOptions = highlightOptions(weight=2,color="#666",
-                                            fillOpacity=0.9,bringToFront=TRUE)
-      ) %>%
-      addLegend("bottomright", pal=pal_4h, values=fourh_map_data$Total,
-                title="4-H Participants", opacity=1)
+      addPolygons(fillColor = ~pal(values), color = "black", weight = 1,
+                  fillOpacity = 0.7, label = lapply(df$label_4h, htmltools::HTML),
+                  highlightOptions = highlightOptions(weight=2,color="#666",
+                                                      fillOpacity=0.9,bringToFront=TRUE)) %>%
+      addLegend("bottomright", pal=pal, values=values, title="4-H Participants", opacity=1)
   })
   
-  # Volunteers vs Participants
-  ratio_df <- full_join(
-    volunteer_data,
-    fourh_data %>% select(County, Participants = Total),
-    by = "County"
-  ) %>%
-    mutate(RatioVP = ifelse(Participants > 0,
-                            round(Volunteers / Participants * 100, 2), NA))
-  
-  ratio_map_data <- left_join(va_counties, ratio_df, "County") %>% st_as_sf()
-  
-  # Color Scale: change every 100%
-  max_ratio  <- max(ratio_map_data$RatioVP, na.rm = TRUE)
-  breaks_100 <- seq(0, ceiling(max_ratio / 100) * 100, by = 100)
-  
-  pal_ratio <- colorBin(
-    "RdYlBu",
-    domain   = ratio_map_data$RatioVP,
-    bins     = breaks_100,
-    na.color = "#f0f0f0"
-  )
-  # -------------------------------------------------------
-  
-  ratio_map_data <- ratio_map_data %>%
-    mutate(label_ratio = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Volunteers: ", Volunteers, "<br>",
-      "Participants: ", Participants, "<br>",
-      "Volunteers / Participants: ", RatioVP, "%"
-    ))
+  # === VOLUNTEERS VS PARTICIPATION ===
+  ratio_df <- reactive({
+    full_join(
+      full_volunteer_data %>% count(County, name = "Volunteers"),
+      fourh_data() %>% select(County, Participants = Total),
+      by = "County"
+    ) %>%
+      mutate(RatioVP = ifelse(Participants > 0,
+                              round(Volunteers / Participants * 100, 2), NA))
+  })
   
   output$vol_particip_map <- renderLeaflet({
-    leaflet(ratio_map_data) %>%
+    data <- left_join(va_counties, ratio_df(), "County") %>% st_as_sf()
+    pal <- colorBin("RdYlBu", domain = data$RatioVP,
+                    bins = seq(0, ceiling(max(data$RatioVP, na.rm=TRUE)/100)*100, 100),
+                    na.color="#f0f0f0")
+    data <- data %>%
+      mutate(label_ratio = paste0("<strong>", toupper(County), "</strong><br>",
+                                  "Volunteers: ", Volunteers, "<br>",
+                                  "Participants: ", Participants, "<br>",
+                                  "Ratio: ", RatioVP, "%"))
+    leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%
-      addPolygons(
-        fillColor = ~pal_ratio(RatioVP),
-        color = "black", weight = 1, fillOpacity = 0.7,
-        label = lapply(ratio_map_data$label_ratio, htmltools::HTML),
-        highlightOptions = highlightOptions(weight=2,color="#666",
-                                            fillOpacity=0.9,bringToFront=TRUE)
-      ) %>%
-      addLegend("bottomright", pal=pal_ratio,
-                values=ratio_map_data$RatioVP,
-                title="% Volunteers of Participants",
-                opacity=1)
+      addPolygons(fillColor = ~pal(RatioVP), color = "black", weight = 1,
+                  fillOpacity = 0.7, label = lapply(data$label_ratio, htmltools::HTML),
+                  highlightOptions = highlightOptions(weight=2,color="#666",
+                                                      fillOpacity=0.9,bringToFront=TRUE)) %>%
+      addLegend("bottomright", pal=pal, values=data$RatioVP,
+                title="% Volunteers of Participants", opacity=1)
   })
   
-  # Demographic Map
+  # === DEMOGRAPHIC MAP ===
   demographic_data <- read_csv("countiesdemographics.csv") %>%
     group_by(site_county) %>%
     summarise(total_participants = sum(participants_total, na.rm = TRUE)) %>%
@@ -269,6 +275,7 @@ server <- function(input, output, session) {
     mutate(participation_rate = (total_participants / Population) * 100)
   
   demographic_map_data <- left_join(va_counties, demographic_data, "County") %>% st_as_sf()
+  
   pal_demo <- colorBin("YlOrRd", domain = demographic_map_data$participation_rate,
                        bins = 5, na.color = "#f0f0f0")
   
@@ -294,7 +301,8 @@ server <- function(input, output, session) {
                 values=demographic_map_data$participation_rate,
                 title="Participation Rate (%)", opacity=1)
   })
+  
 }
 
-# RUN APP 
+# === RUN APP ===
 shinyApp(ui, server)
