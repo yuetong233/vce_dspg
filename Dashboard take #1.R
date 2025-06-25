@@ -197,21 +197,37 @@ server <- function(input, output, session) {
   
   output$fourh_map <- renderLeaflet({
     req(input$selected_participation_group)
-    df <- left_join(va_counties, fourh_data(), "County") %>% st_as_sf()
-    values <- df[[input$selected_participation_group]]
-    values[is.na(values)] <- 0
-    pal <- colorBin("Purples", domain = values, bins = 5, na.color="#f0f0f0")
+    
+    df <- left_join(va_counties, fourh_data(), by = "County") %>% st_as_sf()
+    
+    selected_values <- df[[input$selected_participation_group]]
+    selected_values[is.na(selected_values)] <- 0
+    
+    total_values <- df$Total
+    total_values[is.na(total_values)] <- 0
+    
+    pal <- colorBin("Purples", domain = selected_values, bins = 5, na.color = "#f0f0f0")
+    
     df <- df %>%
-      mutate(label_4h = paste0("<strong>", toupper(County), "</strong><br>",
-                               input$selected_participation_group, ": ", values))
+      mutate(label_4h = paste0(
+        "<strong>", toupper(County), "</strong><br>",
+        "Selected Group: ", selected_values, "<br>",
+        "Total Participants: ", total_values
+      ))
+    
     leaflet(df) %>%
       addProviderTiles("CartoDB.Positron") %>%
-      addPolygons(fillColor = ~pal(values), color = "black", weight = 1,
-                  fillOpacity = 0.7, label = lapply(df$label_4h, htmltools::HTML),
-                  highlightOptions = highlightOptions(weight=2,color="#666",
-                                                      fillOpacity=0.9,bringToFront=TRUE)) %>%
-      addLegend("bottomright", pal=pal, values=values, title="4-H Participants", opacity=1)
+      addPolygons(
+        fillColor = ~pal(selected_values),
+        color = "black", weight = 1, fillOpacity = 0.7,
+        label = lapply(df$label_4h, htmltools::HTML),
+        highlightOptions = highlightOptions(weight = 2, color = "#666",
+                                            fillOpacity = 0.9, bringToFront = TRUE)
+      ) %>%
+      addLegend("bottomright", pal = pal, values = selected_values,
+                title = "4-H Participants", opacity = 1)
   })
+  
   
   # === VOLUNTEERS VS PARTICIPATION ===
   ratio_df <- reactive({
