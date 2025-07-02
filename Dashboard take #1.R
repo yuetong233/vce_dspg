@@ -23,8 +23,41 @@ clean_county <- function(x) {
 # === UI ===
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
-  tags$head(tags$style(HTML("h1, h2, h3, h4 { color:#2e7d32; font-weight:bold; }"))),
-  h1("Exploring Engagement in Virginia 4-H Programs"),
+  
+  ## CSS styling for headers and outlined button
+  tags$head(
+    tags$style(HTML("
+      h1, h2, h3, h4 { color:#2e7d32; font-weight:bold; }
+
+      .my-outline-button {
+        background-color: transparent;
+        color: #00AE42;
+        border: 2px solid #00AE42;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      .my-outline-button:hover {
+        background-color: #00AE42;
+        color: white;
+        cursor: pointer;
+      }
+    "))
+  ),
+  
+  div(
+    style = "display: flex; align-items: center; justify-content: space-between; padding: 10px;",
+    
+    # === TITLE ===
+    h1("Exploring Engagement in Virginia Cooperative Extension",
+       style = "margin: 0;"),
+    
+    # === LOGO ===
+    tags$img(src = "Virginia 4H Logo.png", height = "80px")
+  ),
+  
   tabsetPanel(
     tabPanel("Home",
              h2("Welcome"),
@@ -72,12 +105,14 @@ ui <- fluidPage(
     
     tabPanel("Volunteer County Data",
              h3("Volunteer Data"),
-             selectInput("selected_race", "Select Race:",
+             selectInput("selected_race", "Select Race or Ethnicity:",
                          choices = c("All" = "All", 
                                      "White" = "05. White", 
                                      "Black or African American" = "03. Black or African American",
                                      "Asian" = "02. Asian",
                                      "Two or more races" = "06. Two or more races",
+                                     "Hispanic" = "Hispanic or Latino/a/x",
+                                     "Not Hispanic" = "Not Hispanic or Latino/a/x",
                                      "Prefer not to answer" = "08. Prefer not to answer",
                                      "No Response" = "No Response"),
                          selected = "All"),
@@ -103,7 +138,6 @@ ui <- fluidPage(
              leafletOutput("fourh_map", height = "600px")
     ),
     
-    
     tabPanel("Volunteers vs Participation",
              h3("Volunteers as % of Participants"),
              leafletOutput("vol_particip_map", height = "600px")
@@ -115,6 +149,7 @@ ui <- fluidPage(
     )
   )
 )
+
 
 # === SERVER ===
 server <- function(input, output, session) {
@@ -134,7 +169,8 @@ server <- function(input, output, session) {
     filter(Hours != "did not log hours") %>%
     mutate(
       County = clean_county(County),
-      Race = `CF - Demographic Information - Race`
+      Race = `CF - Demographic Information - Race`,
+      Ethnicity = `CF - Demographic Information - Ethnicity`
     )
   
   filtered_volunteer_data <- reactive({
@@ -142,6 +178,8 @@ server <- function(input, output, session) {
       full_volunteer_data
     } else if (input$selected_race == "No Response") {
       full_volunteer_data %>% filter(is.na(Race) | trimws(Race) == "")
+    } else if (input$selected_race %in% c("Hispanic or Latino/a/x", "Not Hispanic or Latino/a/x")) {
+      full_volunteer_data %>% filter(Ethnicity == input$selected_race)
     } else {
       full_volunteer_data %>% filter(Race == input$selected_race)
     }
@@ -181,16 +219,21 @@ server <- function(input, output, session) {
     }
   })
   
+  
   # === PARTICIPATION MAP ===
   fourh_data <- reactive({
     read_csv("annualprogreport.csv") %>%
       mutate(
-        County = clean_county(CountyArea),
+        County = CountyArea %>%
+          tolower() %>%
+          trimws(),
+        
+        # Specific case corrections if needed
         County = case_when(
-          County == "lynchburg" ~ "lynchburg city",
           County == "fairfax" & grepl("city", CountyArea, ignore.case = TRUE) ~ "fairfax city",
           TRUE ~ County
         ),
+        
         Total = rowSums(select(., starts_with("e"), starts_with("r")), na.rm = TRUE)
       )
   })
