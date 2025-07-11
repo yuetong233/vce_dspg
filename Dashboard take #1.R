@@ -84,12 +84,13 @@ ui <- fluidPage(
              ),
              h3("How to Use This Dashboard"),
              tags$ol(
-               tags$li(strong("Volunteer County Data:"), " View distribution of 4-H volunteers for the 2024-2025 program year and compare it against the total population across different counties."),
-               tags$li(strong("Participation County Data:"), " Explore program reach by looking at the number of 4-H participants by county for the 2024-2025 program year."),
-               tags$li(strong("Volunteers vs Participation:"), " Comparison of volunteers vs participants in each county for the year 2024-2025."),
-               tags$li(strong("4-H Participation Trends:"), " Comparison of participants in 4-H programs across the years. "),
-               tags$li(strong("Demographic Data:"), " Comparison of participants in VCE programs and population across counties. ")
+               tags$li(strong("4-H Participation County Data:"), " Explore program reach by viewing the number of 4-H participants by county for the 2023-2024 program year, including breakdowns by race and ethnicity."),
+               tags$li(strong("4-H Participation Trends:"), " View trends in 4-H participation from 2021 to 2024 to observe changes in program reach over time."),
+               tags$li(strong("VCE Volunteer County Data:"), " View the distribution of volunteers in VCE programs for the 2025 program year across different counties, including breakdowns by race and ethnicity, and compare these against the total county populations."),
+               tags$li(strong("VCE Participation Data:"), " View the total number of participants in VCE programs by county for the 2025 program year. "),
+               tags$li(strong("VCE Volunteers vs Participants"), " View 2025 volunteer and participant data across all counties, including the number of volunteers as a percentage of participants. ")
              ),
+             
              h3("Insights to Explore"),
              tags$ul(
                tags$li("Counties with high volunteer engagement per capita"),
@@ -143,6 +144,10 @@ ui <- fluidPage(
                          selected = "All"),
              leafletOutput("volunteer_map", height = "600px")
     ),
+    tabPanel("VCEE Volunteer County Data",
+             h3("Volunteer Data"),
+             leafletOutput("vce_volunteer_map", height = "600px")
+    ), 
     tabPanel("VCE Participation Data",
              h3("Program Participation Demographics"),
              leafletOutput("demographic_map", height = "600px")
@@ -206,6 +211,7 @@ server <- function(input, output, session) {
                 title = "% Volunteers of Participants",
                 opacity = 1)
   })
+  ### Start of VCE Volunteer map
   va_population <- get_acs("county", state = "VA", variables = "B01003_001", year = 2023, survey = "acs5", output = "wide") %>%
     transmute(County = clean_county(NAME), Population = B01003_001E) %>%
     mutate(Population = ifelse(County == "fairfax", 1147532, Population),
@@ -376,6 +382,58 @@ server <- function(input, output, session) {
       addLegend("bottomright", pal=pal, values=data$RatioVP,
                 title="% Volunteers of Participants", opacity=1)
   })
+  ####VCEE start of Map
+  # === NEW: VCE Volunteer Data Map ===
+  
+  # Get VA population as you already do
+  va_population <- get_acs("county", state = "VA", variables = "B01003_001", year = 2023, survey = "acs5", output = "wide") %>%
+    transmute(County = clean_county(NAME), Population = B01003_001E) %>%
+    mutate(Population = ifelse(County == "fairfax", 1147532, Population),
+           Population = ifelse(County == "franklin",  54477, Population))
+  
+  # Read PEARS_BI data and clean county names
+  vce_volunteer_df <- read_excel("PEARS_BI Volunteer and Participant 2025.xlsx") %>%
+    transmute(
+      County = clean_county(County),
+      Volunteers = Volunteers
+    )
+  
+  # Merge volunteers data with population and counties shapefile
+  vce_volunteer_map_data <- left_join(vce_volunteer_df, va_population, by = "County") %>%
+    mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
+    left_join(va_counties, ., by = "County") %>%
+    st_as_sf() %>%
+    mutate(label_vce_vol = paste0(
+      "<strong>", toupper(County), "</strong><br>",
+      "Volunteers: ", Volunteers, "<br>",
+      "Population: ", Population, "<br>",
+      "Volunteer Rate: ", VolunteerRate, "%"
+    ))
+  
+  # Render the leaflet map
+  output$vce_volunteer_map <- renderLeaflet({
+    data <- vce_volunteer_map_data
+    pal <- colorBin("YlOrRd", domain = data$VolunteerRate,
+                    bins = 5, na.color = "#f0f0f0")
+    
+    leaflet(data) %>%
+      addProviderTiles("CartoDB.Positron") %>%
+      addPolygons(
+        fillColor = ~pal(VolunteerRate),
+        color = "black", weight = 1,
+        fillOpacity = 0.7,
+        label = lapply(data$label_vce_vol, htmltools::HTML),
+        highlightOptions = highlightOptions(weight = 2, color = "#666",
+                                            fillOpacity = 0.9, bringToFront = TRUE)
+      ) %>%
+      addLegend("bottomright", pal = pal, values = data$VolunteerRate,
+                title = "Volunteers as % of Pop.", opacity = 1)
+  })
+  
+  
+  
+  
+  
   # === DEMOGRAPHIC MAP ===
   demographic_data <- read_csv("countiesdemographics.csv") %>%
     group_by(site_county) %>%
