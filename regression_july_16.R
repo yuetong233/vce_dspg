@@ -116,15 +116,13 @@ model <- lm(log(Participants +1) ~ log(`Average Household Size`) +
               `Percentage of Homes with a Mortgage Under $500` +
               `Percent of Divorced Men` +
               `Percent of Divorced Women` +
-              `Number of Dwellings That are Owned` +
               `Percent of Dwellings That are Rented` +
               `Percent of Single Fathers` +
               `Percent of Single Mothers` +
               `Percentage of Asian/Pacific Islander Language Speakers` +
-              `Percentage of Indo/European Languages` +
               `Percentage of Spanish Speakers` 
             , data = merged_data)
 
 summary(model)
 
-
+stargazer(model, type = "text")
