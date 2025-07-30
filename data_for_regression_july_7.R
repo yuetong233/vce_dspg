@@ -175,4 +175,7 @@ setwd("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\Clean Data")
 write.xlsx(combined_df, "independent_variables.xlsx")
 
 independent_variables <- combined_df
-rm(combined_df)
+rm(combined_df, PEARS_Raw_Data_5_23_25)
+
+
+volunteers_participants_2025 <- PEARS_BI_Volunteer_and_Participant_2025

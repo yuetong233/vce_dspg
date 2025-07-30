@@ -16,6 +16,8 @@ library(stargazer)
 library(openxlsx)
 library(knitr)
 library(kableExtra)
+library(tidyr)
+
 # === HELPER FUNCTION ===
 clean_county <- function(x) {
   x %>%
@@ -76,17 +78,23 @@ ui <- fluidPage(
                          tags$li(strong("Data Sources:"),
                                  tags$ul(
                                    tags$li("Better Impact volunteer records"),
-                                   tags$li("PEARS 4-H Annual Program Reports"),
+                                   tags$li("PEARS Extension program data"),
+                                   tags$li("4-H Annual Program Reports"),
                                    tags$li("American Community Survey (ACS) population data")
                                  )),
                          tags$li("County names standardized for consistency."),
                          tags$li("Volunteer and participant counts aggregated by county."),
                          tags$li("Rates calculated against county population or program totals."),
+                         tags$li("Racial and ethnic demographic data from ACS joined to assess representation in programs."),
+                         tags$li("Volunteer-to-participant ratios computed to evaluate program support capacity."),
+                         tags$li("Regression analysis conducted to explore relationships between community characteristics and engagement levels."),
+                         tags$li("Interactive dashboard developed using R and Shiny for data exploration by stakeholders."),
                          tags$li(strong("Purpose:"),
                                  "By identifying the areas of Virginia that need support and comparing them to where ",
                                  "Virginia Cooperative Extension’s resources are currently being allocated, this analysis ",
                                  "aims to give VCE stakeholders a clearer picture of community needs and how best to direct ",
                                  "future outreach and support.")
+                         
                        ),
                        h3("How to Use This Dashboard"),
                        tags$ol(
@@ -117,23 +125,8 @@ ui <- fluidPage(
                        ),
                        
                        h3("Findings"),
-                       
-                       p("Our analysis revealed regional disparities in engagement with Virginia 
-                         Cooperative Extension programs. Specifically, inside of 4-H, counties like 
-                         Fairfax, Montgomery, and Norfolk City showed strong volunteer-to-participant 
-                         ratios, indicating well-established infrastructure in programs that support 
-                         youth engagement. In contrast, many other counties displayed lower levels of 
-                         both volunteers and participants in 4-H, suggesting areas where more outreach is
-                         needed to strengthen local program delivery."),
-                       
-                       p("A regression analysis of broader Virginia Cooperative Extension data showed that 
-                         home ownership and being of middle school age are positively correlated 
-                         with higher level of engagement. On the other hand communities with more spanish 
-                         speaking residents and those with higher mortgages tend to participate 
-                         less in extension programs. This highlights potential barriers related with 
-                         language and access. These findings emphasize the importance of targeted 
-                         strategies to ensure a more evenly distributed participation across Virginia 
-                         counties."),
+                       p("Our analysis revealed regional disparities in engagement with Virginia Cooperative Extension programs. Specifically, inside of 4-H, counties like Fairfax, Montgomery, and Norfolk City showed strong volunteer-to-participant ratios, indicating well-established infrastructure in programs that support youth engagement. In contrast, many other counties displayed lower levels of both volunteers and participants in 4-H, suggesting areas where more outreach is needed to strengthen local program delivery."),
+                       p("A regression analysis of broader Virginia Cooperative Extension data showed that home ownership and having a middle school education are positively correlated with higher level of engagement. On the other hand communities with more spanish speaking residents and those with higher mortgage burdens tend to participate less in extension programs. This highlights potential barriers related with language and access. These findings emphasize the importance of targeted strategies to ensure a more evenly distributed participation across Virginia counties."),
                        
                        h3("Acknowledgments"),
                        p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
@@ -183,12 +176,31 @@ ui <- fluidPage(
                        tags$img(src = "VCE_regions_map.png", width = "100%", alt = "VCE Regions Map")
               ),
               tabPanel("VCE Volunteer County Data",
-                       h3("Volunteer Data"),
+                       h3("Volunteer Counts by Race and Ethnicity"),
+                       selectInput("vce_race_filter", "Select Group:",
+                                   choices = c(
+                                     "All Volunteers" = "all",
+                                     "Hispanic" = "eth_hispanic",
+                                     "White" = "race_white",
+                                     "Black" = "race_black",
+                                     "Asian" = "race_asian"
+                                   )),
                        leafletOutput("vce_volunteer_map", height = "600px")
-              ), 
+              ),
+              
               tabPanel("VCE Participation Data",
-                       h3("Program Participation Demographics"),
-                       leafletOutput("demographic_map", height = "600px")
+                       h3("Participants by Race/Ethnicity"),
+                       selectInput(
+                         "participant_group", "Select Group:",
+                         choices = c(
+                           "All Participants" = "participants_total",
+                           "Hispanic" = "participants_ethnicity_hispanic",
+                           "White" = "participants_race_white",
+                           "Black" = "participants_race_black",
+                           "Asian" = "participants_race_asian"
+                         )
+                       ),
+                       leafletOutput("participant_map", height = "600px")
               ),
               tabPanel("VCE Volunteers vs Participation",
                        h3("Volunteers as % of Participants"),
@@ -197,26 +209,25 @@ ui <- fluidPage(
               tabPanel("Does Homelife Predict Participation?",
                        h3("Regression Results"),
                        p("There is a positive correlation
-                         between home ownership, and VCE
+                         between lack of education past middle school, home ownership, and VCE
                          participation. Additionally, there are pretty strong negative
                          correlations between a higher mortgage, Spanish speakers and participation - 
                          indicating that there is less participation among higher income 
-                         families, as well as Spanish speakers."),
+                         families, as well as Spanish speakers.
                          
-                         p("These results are easily interpretable. There is clearly
+                         These results are easily interpretable. There is clearly
                          a language barrier for Spanish speakers, and other people who
                          aren't native English speakers - leading to lower participation
-                         from these groups.") ,
+                         from these groups. 
                          
-                         p("Home ownership and having a mortage of $3,000 or more correlate
+                         Home ownership and having a mortage of $3,000 or more correlate
                          with better economic health, which makes participation in these 
-                         programs more feasible."),
+                         programs more feasible. 
                          
-                         p("The positive correlation between middle school education and participation does not
+                         The correlation of middle school education and participation does not
                          mean that people who dropped out of middle school are more likely to participate - 
-                         rather it means that there is a higher rate of middle school aged people
+                         rather it means that there is a higher likelihood of middle school aged people
                          participating in these programs"),
-                       
                        htmlOutput("regression_results")
                        
               )
@@ -226,14 +237,14 @@ ui <- fluidPage(
 # === SERVER ===
 
 server <- function(input, output, session) {
-  merged_data <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\merged_data.xlsx")
+  merged_data <- read_excel("merged_data.xlsx")
   census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
   va_counties <- counties("VA", cb = TRUE, year = 2023) %>%
     st_transform(4326) %>%
     mutate(County = clean_county(NAME))
   
   # === UPDATED: READ PEARS_BI DATA FROM NEW FILE ===
-  pears_bi_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\PEARS_BI_with_NewVolunteers.xlsx") %>%
+  pears_bi_df <- read_excel("PEARS_BI_with_NewVolunteers.xlsx") %>%
     mutate(
       County = tolower(County),
       County = gsub(" county", "", County),
@@ -342,9 +353,9 @@ server <- function(input, output, session) {
   })
   
   # === PARTICIPATION MAP ===
-  particip_combined <- read_xlsx("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\particip_combined.xlsx")
+  particip_combined <- read_xlsx("particip_combined.xlsx")
   fourh_data <- reactive({
-    read_csv("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\annualprogreport.csv") %>%
+    read_csv("annualprogreport.csv") %>%
       mutate(
         County = CountyArea %>%
           tolower() %>%
@@ -385,7 +396,7 @@ server <- function(input, output, session) {
   })
   # === VOLUNTEERS VS PARTICIPATION ===
   # === Load New Volunteers Data ===
-  new_vol_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\PEARS_BI_with_NewVolunteers.xlsx") %>%
+  new_vol_df <- read_excel("PEARS_BI_with_NewVolunteers.xlsx") %>%
     transmute(
       County = clean_county(County),
       Volunteers = NewVolunteers
@@ -406,56 +417,81 @@ server <- function(input, output, session) {
   ####VCEE start of Map
   # === NEW: VCE Volunteer Data Map ===
   
-  # Get VA population as you already do
-  va_population <- get_acs("county", state = "VA", variables = "B01003_001", year = 2023, survey = "acs5", output = "wide") %>%
-    transmute(County = clean_county(NAME), Population = B01003_001E) %>%
-    mutate(Population = ifelse(County == "fairfax", 1147532, Population),
-           Population = ifelse(County == "franklin",  54477, Population))
-  
-  # UPDATED: Read from the new file and use NewVolunteers
-  vce_volunteer_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\PEARS_BI_with_NewVolunteers.xlsx") %>%
-    transmute(
-      County = clean_county(County),
-      Volunteers = NewVolunteers  # Using the updated column
+  # === Load Volunteer Data ===
+  vce_volunteer_data <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\VCE_VolunteerCounty_Data.xlsx") %>%
+    filter(HoursWorked > 0, !is.na(CountyOrCity)) %>%
+    mutate(
+      County = tolower(trimws(CountyOrCity)),
+      Race = `CF - Demographic Information - Race`,
+      Ethnicity = `CF - Demographic Information - Ethnicity`
     )
   
-  # Merge volunteers data with population and counties shapefile
-  vce_volunteer_map_data <- left_join(vce_volunteer_df, va_population, by = "County") %>%
-    mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
-    left_join(va_counties, ., by = "County") %>%
-    st_as_sf() %>%
-    mutate(label_vce_vol = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Volunteers: ", Volunteers, "<br>",
-      "Population: ", Population, "<br>",
-      "Volunteer Rate: ", VolunteerRate, "%"
-    ))
+  # === Reactive Filtering for Selected Group ===
+  filtered_vce_volunteer_data <- reactive({
+    data <- vce_volunteer_data
+    
+    switch(input$vce_race_filter,
+           "eth_hispanic" = data <- data %>% filter(Ethnicity == "Hispanic or Latino/a/x"),
+           "race_white" = data <- data %>% filter(Race == "05. White"),
+           "race_black" = data <- data %>% filter(Race == "03. Black or African American"),
+           "race_asian" = data <- data %>% filter(Race == "02. Asian"),
+           "all" = data <- data  # No filtering
+    )
+    
+    data
+  })
   
-  # Render the leaflet map
+  # === Reactive Volunteer Counts per County ===
+  vce_volunteer_map_data <- reactive({
+    # Total volunteers per county (regardless of filter)
+    total_counts <- vce_volunteer_data %>%
+      count(County, name = "TotalVolunteers")
+    
+    # Filtered group counts
+    group_counts <- filtered_vce_volunteer_data() %>%
+      count(County, name = "GroupVolunteers")
+    
+    merged_data <- left_join(va_counties, total_counts, by = "County") %>%
+      left_join(group_counts, by = "County") %>%
+      replace_na(list(GroupVolunteers = 0)) %>%
+      st_as_sf() %>%
+      mutate(label_vce = paste0(
+        "<strong>", toupper(County), "</strong><br>",
+        "Selected Group Volunteers: ", GroupVolunteers, "<br>",
+        "Total Volunteers: ", TotalVolunteers
+      ))
+    
+    merged_data
+  })
+  
+  # === Render Leaflet Map ===
   output$vce_volunteer_map <- renderLeaflet({
-    data <- vce_volunteer_map_data
-    pal <- colorBin("YlOrRd", domain = data$VolunteerRate,
-                    bins = 5, na.color = "#f0f0f0")
+    data <- vce_volunteer_map_data()
+    
+    pal <- colorBin("OrRd", domain = data$GroupVolunteers, bins = 5, na.color = "#f0f0f0")
     
     leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
-        fillColor = ~pal(VolunteerRate),
+        fillColor = ~pal(GroupVolunteers),
         color = "black", weight = 1,
         fillOpacity = 0.7,
-        label = lapply(data$label_vce_vol, htmltools::HTML),
+        label = lapply(data$label_vce, htmltools::HTML),
         highlightOptions = highlightOptions(weight = 2, color = "#666",
                                             fillOpacity = 0.9, bringToFront = TRUE)
       ) %>%
-      addLegend("bottomright", pal = pal, values = data$VolunteerRate,
-                title = "Volunteers as % of Pop.", opacity = 1)
+      addLegend("bottomright", pal = pal,
+                values = data$GroupVolunteers,
+                title = "Volunteers (Selected Group)",
+                opacity = 1)
   })
+  
   
   ##Start of 4H Map
   # === 4-H Volunteer Demographic Map (By Race or Ethnicity) ===
   
   # Read and process the Excel data
-  volunteer_demo_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\4H Volunteers.xlsx") %>%
+  volunteer_demo_df <- read_excel("4H Volunteers.xlsx") %>%
     mutate(CountyOrCity = str_to_title(trimws(CountyOrCity)))
   
   # Updated: safer parsing function
@@ -586,56 +622,87 @@ server <- function(input, output, session) {
   
   
   # === DEMOGRAPHIC MAP ===
-  demographic_data <- read_csv("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\newcountiesdemographics.csv") %>%
-    group_by(site_county) %>%
-    summarise(total_participants = sum(participants_total, na.rm = TRUE)) %>%
-    mutate(
-      County = tolower(site_county),
-      County = gsub(" county", "", County),
-      County = gsub(" city", "", County),
-      County = trimws(County)
-    )
-  population_data <- read_csv("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\virginia2024population.csv",
-                              skip = 2,
-                              col_names = c("State_County", "Population")) %>%
-    filter(!is.na(Population)) %>%
-    mutate(
-      County = tolower(State_County),
-      County = gsub(" county, virginia", "", County),
-      County = gsub(" city, virginia", "", County),
-      County = gsub("^\\.", "", County),
-      County = trimws(County),
-      Population = as.numeric(Population),
-      Population = ifelse(County == "fairfax", 1147532, Population),
-      Population = ifelse(County == "franklin", 54477, Population)
-    ) %>%
-    select(County, Population)
-  demographic_data <- left_join(demographic_data, population_data, "County") %>%
-    mutate(participation_rate = (total_participants / Population) * 100)
-  demographic_map_data <- left_join(va_counties, demographic_data, "County") %>% st_as_sf()
-  pal_demo <- colorBin("YlOrRd", domain = demographic_map_data$participation_rate,
-                       bins = 5, na.color = "#f0f0f0")
-  demographic_map_data <- demographic_map_data %>%
-    mutate(label_demo = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Total Participants: ", total_participants, "<br>",
-      "County Population: ", format(Population, big.mark = ","), "<br>",
-      "Participation Rate: ", round(participation_rate, 2), "%"
-    ))
-  output$demographic_map <- renderLeaflet({
-    leaflet(demographic_map_data) %>%
-      addProviderTiles("CartoDB.Positron") %>%
-      addPolygons(
-        fillColor = ~pal_demo(participation_rate),
-        color = "black", weight = 1, fillOpacity = 0.7,
-        label = lapply(demographic_map_data$label_demo, htmltools::HTML),
-        highlightOptions = highlightOptions(weight=2,color="#666",
-                                            fillOpacity=0.9,bringToFront=TRUE)
-      ) %>%
-      addLegend("bottomright", pal=pal_demo,
-                values=demographic_map_data$participation_rate,
-                title="Participation Rate (%)", opacity=1)
-  })
+  
+  #Load Participation Data
+  vce_particip_data <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\vce_particip_demographics.xlsx") %>%
+    mutate(site_county = tolower(trimws(site_county)))
+  
+  # Define server logic
+  server <- function(input, output, session) {
+    
+    filtered_data <- reactive({
+      data <- vce_particip_data
+      switch(input$participant_group,
+             "participants_ethnicity_hispanic" = {
+               data %>% filter(participants_ethnicity_hispanic > 0)
+             },
+             "participants_race_white" = {
+               data %>% filter(participants_race_white > 0)
+             },
+             "participants_race_black" = {
+               data %>% filter(participants_race_black > 0)
+             },
+             "participants_race_asian" = {
+               data %>% filter(participants_race_asian > 0)
+             },
+             "participants_total" = {
+               data %>% filter(participants_total > 0)
+             }
+      )
+    })
+    
+    map_data <- reactive({
+      data <- filtered_data()
+      # Merge with spatial data
+      merged <- va_counties %>%
+        mutate(site_county = tolower(trimws(NAME))) %>%
+        left_join(
+          data %>% select(site_county, participants_total, participants_ethnicity_hispanic, participants_race_asian, participants_race_black, participants_race_white),
+          by = "site_county"
+        ) %>%
+        replace_na(list(
+          participants_total=0,
+          participants_ethnicity_hispanic=0,
+          participants_race_asian=0,
+          participants_race_black=0,
+          participants_race_white=0
+        )) %>%
+        mutate(
+          label_map = paste0(
+            "<strong>", toupper(NAME), "</strong><br/>",
+            "Total Participants: ", participants_total, "<br/>",
+            "Hispanic: ", participants_ethnicity_hispanic, "<br/>",
+            "White: ", participants_race_white, "<br/>",
+            "Black: ", participants_race_black, "<br/>",
+            "Asian: ", participants_race_asian
+          )
+        )
+      merged
+    })
+    
+    output$participant_map <- renderLeaflet({
+      data <- map_data()
+      max_value <- max(data$participants_total, na.rm=TRUE)
+      bins <- c(0, round(max_value/5), round(2*max_value/5), round(3*max_value/5), round(4*max_value/5), max_value)
+      pal <- colorBin("YlOrRd", domain = data$participants_total, bins=bins, na.color="#f0f0f0")
+      
+      leaflet(data) %>%
+        addProviderTiles("CartoDB.Positron") %>%
+        addPolygons(
+          fillColor=~pal(participants_total),
+          color="black", weight=1,
+          fillOpacity=0.7,
+          label= lapply(data$label_map, htmltools::HTML),
+          highlightOptions=highlightOptions(weight=2, color="#666", fillOpacity=0.9, bringToFront=TRUE)
+        ) %>%
+        addLegend("bottomright", pal=pal, values=~participants_total,
+                  title="Participants (Total)", opacity=1)
+    })
+  }
+  
+  
+  
+  # === REGRESSION ===
   output$regression_results <- renderUI({
     model <- lm(log(Participants + 1) ~ 
                   log(`Average Household Size`) + 
@@ -697,7 +764,6 @@ server <- function(input, output, session) {
     
     HTML(kable_table)
   })
-}
 
 
 

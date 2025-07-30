@@ -12,10 +12,7 @@ library(readxl)
 library(plotly)
 library(htmltools)
 library(stringr)
-library(stargazer)
-library(openxlsx)
-library(knitr)
-library(kableExtra)
+
 # === HELPER FUNCTION ===
 clean_county <- function(x) {
   x %>%
@@ -47,7 +44,6 @@ ui <- fluidPage(
      }
    "))
   ),
-  
   div(
     style = "display: flex; align-items: center; justify-content: space-between; padding: 10px;",
     # === TITLE ===
@@ -91,54 +87,21 @@ ui <- fluidPage(
                        h3("How to Use This Dashboard"),
                        tags$ol(
                          tags$li(strong("4-H Participation County Data:"), " Explore program reach by viewing the number of 4-H participants by county for the 2023-2024 program year, including breakdowns by race and ethnicity."),
-                         tags$li(strong("4-H Volunteer County Data:"), " Explore volunteer engagement by viewing the number of 4-H volunteers by county for the 2023-2024 program year, including breakdowns by race and ethnicity."),
-                         tags$li(strong("4-H Volunteers vs Participants:"), " Compare the number of 4-H volunteers to participants by county for the 2023-2024 program year, with volunteers shown as a percentage of participants to highlight engagement levels across Virginia."),
                          tags$li(strong("4-H Participation Trends:"), " View trends in 4-H participation from 2021 to 2024 to observe changes in program reach over time."),
-                         tags$li(strong("VCE Volunteer Data:"), " View the number of volunteers across all counties for the 2025 program year, including volunteer rates per capita to assess engagement relative to county populations."),
-                         tags$li(strong("VCE Participation Data:"), " View the number of participants across all counties for the 2025 program year, including participation rates per capita to assess program reach relative to county populations."),
-                         tags$li(strong("VCE Volunteers vs Participants:"), " View the number of volunteers as a percentage of participants across all counties for the 2025 program year to compare engagement levels within Virginia Cooperative Extension programs."),
-                         tags$li(strong("Does Homelife Predict Participation:"), " Explore the results of a regression analysis examining whether factors related to homelife and upbringing are associated with participation levels in Virginia Cooperative Extension programs.")
+                         tags$li(strong("VCE Volunteer County Data:"), " View the distribution of volunteers in VCE programs for the 2025 program year across different counties, including breakdowns by race and ethnicity, and compare these against the total county populations."),
+                         tags$li(strong("VCE Participation Data:"), " View the total number of participants in VCE programs by county for the 2025 program year. "),
+                         tags$li(strong("VCE Volunteers vs Participants"), " View 2025 volunteer and participant data across all counties, including the number of volunteers as a percentage of participants. ")
                        ),
-                       
-                       
                        
                        h3("Insights to Explore"),
                        tags$ul(
                          tags$li("Counties with high volunteer engagement per capita"),
                          tags$li("Areas where participant numbers exceed volunteer capacity"),
-                         tags$li("Demographic underrepresentation in 4-H programs"),
-                         tags$li("Counties with high or low volunteer-to-participant ratios"),
-                         tags$li("Regions where Spanish-speaking populations are underserved"),
-                         tags$li("Relationships between housing status and Extension participation"),
-                         tags$li("Patterns of participation in counties with low educational attainment"),
-                         tags$li("Counties that may benefit from targeted outreach or translation support"),
-                         tags$li("Changes in 4-H participation trends over time (2021–2024)"),
-                         tags$li("Alignment between program reach and community demographics")
+                         tags$li("Demographic underrepresentation in 4-H programs")
                        ),
-                       
-                       h3("Findings"),
-                       
-                       p("Our analysis revealed regional disparities in engagement with Virginia 
-                         Cooperative Extension programs. Specifically, inside of 4-H, counties like 
-                         Fairfax, Montgomery, and Norfolk City showed strong volunteer-to-participant 
-                         ratios, indicating well-established infrastructure in programs that support 
-                         youth engagement. In contrast, many other counties displayed lower levels of 
-                         both volunteers and participants in 4-H, suggesting areas where more outreach is
-                         needed to strengthen local program delivery."),
-                       
-                       p("A regression analysis of broader Virginia Cooperative Extension data showed that 
-                         home ownership and being of middle school age are positively correlated 
-                         with higher level of engagement. On the other hand communities with more spanish 
-                         speaking residents and those with higher mortgages tend to participate 
-                         less in extension programs. This highlights potential barriers related with 
-                         language and access. These findings emphasize the importance of targeted 
-                         strategies to ensure a more evenly distributed participation across Virginia 
-                         counties."),
-                       
                        h3("Acknowledgments"),
                        p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
               ),
-              
               tabPanel("4-H Participation County Data",
                        h3("Participation Data"),
                        selectInput("selected_participation_group", "Select Group:",
@@ -182,7 +145,7 @@ ui <- fluidPage(
                        # Add the image here
                        tags$img(src = "VCE_regions_map.png", width = "100%", alt = "VCE Regions Map")
               ),
-              tabPanel("VCE Volunteer County Data",
+              tabPanel("VCEE Volunteer County Data",
                        h3("Volunteer Data"),
                        leafletOutput("vce_volunteer_map", height = "600px")
               ), 
@@ -193,47 +156,19 @@ ui <- fluidPage(
               tabPanel("VCE Volunteers vs Participation",
                        h3("Volunteers as % of Participants"),
                        leafletOutput("vce_vol_particip_map", height = "600px")
-              ),
-              tabPanel("Does Homelife Predict Participation?",
-                       h3("Regression Results"),
-                       p("There is a positive correlation
-                         between home ownership, and VCE
-                         participation. Additionally, there are pretty strong negative
-                         correlations between a higher mortgage, Spanish speakers and participation - 
-                         indicating that there is less participation among higher income 
-                         families, as well as Spanish speakers."),
-                         
-                         p("These results are easily interpretable. There is clearly
-                         a language barrier for Spanish speakers, and other people who
-                         aren't native English speakers - leading to lower participation
-                         from these groups.") ,
-                         
-                         p("Home ownership and having a mortage of $3,000 or more correlate
-                         with better economic health, which makes participation in these 
-                         programs more feasible."),
-                         
-                         p("The positive correlation between middle school education and participation does not
-                         mean that people who dropped out of middle school are more likely to participate - 
-                         rather it means that there is a higher rate of middle school aged people
-                         participating in these programs"),
-                       
-                       htmlOutput("regression_results")
-                       
               )
   )
 )
-
 # === SERVER ===
-
 server <- function(input, output, session) {
-  merged_data <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\merged_data.xlsx")
   census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
+  
   va_counties <- counties("VA", cb = TRUE, year = 2023) %>%
     st_transform(4326) %>%
     mutate(County = clean_county(NAME))
   
   # === UPDATED: READ PEARS_BI DATA FROM NEW FILE ===
-  pears_bi_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\PEARS_BI_with_NewVolunteers.xlsx") %>%
+  pears_bi_df <- read_excel("PEARS_BI_with_NewVolunteers.xlsx") %>%
     mutate(
       County = tolower(County),
       County = gsub(" county", "", County),
@@ -340,11 +275,10 @@ server <- function(input, output, session) {
         yaxis = list(title = "Total Participation")
       )
   })
-  
   # === PARTICIPATION MAP ===
-  particip_combined <- read_xlsx("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\particip_combined.xlsx")
+  particip_combined <- read_xlsx("particip_combined.xlsx")
   fourh_data <- reactive({
-    read_csv("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\annualprogreport.csv") %>%
+    read_csv("annualprogreport.csv") %>%
       mutate(
         County = CountyArea %>%
           tolower() %>%
@@ -385,7 +319,7 @@ server <- function(input, output, session) {
   })
   # === VOLUNTEERS VS PARTICIPATION ===
   # === Load New Volunteers Data ===
-  new_vol_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\PEARS_BI_with_NewVolunteers.xlsx") %>%
+  new_vol_df <- read_excel("PEARS_BI_with_NewVolunteers.xlsx") %>%
     transmute(
       County = clean_county(County),
       Volunteers = NewVolunteers
@@ -413,7 +347,7 @@ server <- function(input, output, session) {
            Population = ifelse(County == "franklin",  54477, Population))
   
   # UPDATED: Read from the new file and use NewVolunteers
-  vce_volunteer_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\PEARS_BI_with_NewVolunteers.xlsx") %>%
+  vce_volunteer_df <- read_excel("PEARS_BI_with_NewVolunteers.xlsx") %>%
     transmute(
       County = clean_county(County),
       Volunteers = NewVolunteers  # Using the updated column
@@ -455,7 +389,7 @@ server <- function(input, output, session) {
   # === 4-H Volunteer Demographic Map (By Race or Ethnicity) ===
   
   # Read and process the Excel data
-  volunteer_demo_df <- read_excel("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\4H Volunteers.xlsx") %>%
+  volunteer_demo_df <- read_excel("4H Volunteers.xlsx") %>%
     mutate(CountyOrCity = str_to_title(trimws(CountyOrCity)))
   
   # Updated: safer parsing function
@@ -586,7 +520,7 @@ server <- function(input, output, session) {
   
   
   # === DEMOGRAPHIC MAP ===
-  demographic_data <- read_csv("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\newcountiesdemographics.csv") %>%
+  demographic_data <- read_csv("countiesdemographics.csv") %>%
     group_by(site_county) %>%
     summarise(total_participants = sum(participants_total, na.rm = TRUE)) %>%
     mutate(
@@ -595,7 +529,7 @@ server <- function(input, output, session) {
       County = gsub(" city", "", County),
       County = trimws(County)
     )
-  population_data <- read_csv("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\virginia2024population.csv",
+  population_data <- read_csv("virginia2024population.csv",
                               skip = 2,
                               col_names = c("State_County", "Population")) %>%
     filter(!is.na(Population)) %>%
@@ -636,70 +570,12 @@ server <- function(input, output, session) {
                 values=demographic_map_data$participation_rate,
                 title="Participation Rate (%)", opacity=1)
   })
-  output$regression_results <- renderUI({
-    model <- lm(log(Participants + 1) ~ 
-                  log(`Average Household Size`) + 
-                  log(`Median Household Income` + 1) + 
-                  log(`Average Household Size of Owned Dwellings`) +
-                  log(`Number of Dwellings That are Owned`) +
-                  log(`Average Household Size of Rented Dwellings`) +
-                  `Percent Got A Bachelors Degree` +
-                  `Percent Did Not Graduate College` +
-                  `Percent of People who Have Monthly Costs That Are At Least 35% of Income` +
-                  `Percent of Families With One or More Children Under 18 y/o` +
-                  `Percent Only Graduated High School` +
-                  `Percent Not Educated Past Middle School` +
-                  `Percent of Families in Poverty who Have Children` +
-                  `Percent of Married Couples Who Have Children` +
-                  `Percent Did Not Graduate High School` +
-                  `Percent of People 16 and Older Who Are Employed` +
-                  `Percent of People 16 and Older Who Are Unemployed` +
-                  `Percent of Families Where Both Parents Work` +
-                  `Percentage of Homes with a Mortgage Between $1500 and $1999` +
-                  `Percentage of Homes with a Mortgage $3000 or more` +
-                  `Percentage of Homes with a Mortgage Under $500` +
-                  `Percent of Divorced Men` +
-                  `Percent of Divorced Women` +
-                  `Percent of Dwellings That are Rented` +
-                  `Percent of Single Fathers` +
-                  `Percent of Single Mothers` +
-                  `Percentage of Asian/Pacific Islander Language Speakers` +
-                  `Percentage of Spanish Speakers`,
-                data = merged_data)
-    
-    tidy_results <- broom::tidy(model) %>%
-      dplyr::mutate(
-        significance = dplyr::case_when(
-          p.value < 0.01 ~ "***",
-          p.value < 0.05 ~ "**",
-          p.value < 0.1 ~ "*",
-          TRUE ~ ""
-        ),
-        term_display = paste0(term, significance),
-        estimate = round(estimate, 3),
-        std.error = round(std.error, 3),
-        statistic = round(statistic, 2),
-        p.value_display = ifelse(p.value < 0.001, "<0.001", round(p.value, 3))
-      )
-    
-    kable_table <- tidy_results %>%
-      dplyr::select(term_display, estimate, std.error, statistic, p.value_display) %>%
-      knitr::kable(caption = "Regression Results", format = "html") %>%
-      kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
-    
-    # Highlight positively significant rows (customize as needed)
-    positively_significant <- c(5, 12)
-    negatively_significant <- c(20, 28)
-    
-    kable_table <- kable_table %>%
-      kableExtra::row_spec(positively_significant, background = "lightgreen") %>%
-      kableExtra::row_spec(negatively_significant, background = "lightcoral")
-    
-    HTML(kable_table)
-  })
 }
-
-
-
 # === RUN APP ===
 shinyApp(ui, server)
+
+
+
+
+
+

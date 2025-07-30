@@ -8,11 +8,7 @@ library(leaflet)
 library(sf)
 library(tigris)
 library(tidycensus)
-
-getwd()
-
 options(tigris_use_cache = TRUE)
-
 # === HELPER FUNCTION ===
 clean_county <- function(x) {
   x %>%
@@ -21,7 +17,6 @@ clean_county <- function(x) {
     gsub(" county| city", "", .) %>%
     trimws()
 }
-
 # === UI ===
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "flatly"),
@@ -71,7 +66,6 @@ ui <- fluidPage(
              h3("Acknowledgments"),
              p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
     ),
-    
     tabPanel("Volunteer County Data",
              h3("Volunteer Data"),
              selectInput("selected_race", "Select Race:",
@@ -85,7 +79,6 @@ ui <- fluidPage(
                          selected = "All"),
              leafletOutput("volunteer_map", height = "600px")
     ),
-    
     tabPanel("Participation County Data",
              h3("Participation Data"),
              selectInput("selected_participation_group", "Select Group:",
@@ -104,51 +97,32 @@ ui <- fluidPage(
                          )),
              leafletOutput("fourh_map", height = "600px")
     ),
-    
-      tabPanel("4-H Participation Trend",
-               h3("4-H Participation"),
-               plotlyOutput("Rplot", 
-                   width = "100%",
-                   height = "auto"),
-               p("Note: The data for the year 2024-2025 only goes as far as May 31st, 2025"),
-      ),
-      
-      tabPanel("Volunteers vs Participation",
-               h3("Volunteers as % of Participants"),
-               leafletOutput("vol_particip_map", height = "600px")
-      ),
-      
-      tabPanel("Demographic Data",
-               h3("Program Participation Demographics"),
-               leafletOutput("demographic_map", height = "600px")
-      )
+    tabPanel("Volunteers vs Participation",
+             h3("Volunteers as % of Participants"),
+             leafletOutput("vol_particip_map", height = "600px")
+    ),
+    tabPanel("Demographic Data",
+             h3("Program Participation Demographics"),
+             leafletOutput("demographic_map", height = "600px")
     )
   )
-
-
-
-
+)
 # === SERVER ===
 server <- function(input, output, session) {
-  
   census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
-  
   va_counties <- counties("VA", cb = TRUE, year = 2023) %>%
     st_transform(4326) %>%
     mutate(County = clean_county(NAME))
-  
   va_population <- get_acs("county", state = "VA", variables = "B01003_001", year = 2023, survey = "acs5", output = "wide") %>%
     transmute(County = clean_county(NAME), Population = B01003_001E) %>%
     mutate(Population = ifelse(County == "fairfax", 1147532, Population),
            Population = ifelse(County == "franklin",  54477, Population))
-  
   full_volunteer_data <- read_csv("countiesimpact.csv") %>%
     filter(Hours != "did not log hours") %>%
     mutate(
       County = clean_county(County),
       Race = `CF - Demographic Information - Race`
     )
-  
   filtered_volunteer_data <- reactive({
     if (input$selected_race == "All") {
       full_volunteer_data
@@ -158,11 +132,9 @@ server <- function(input, output, session) {
       full_volunteer_data %>% filter(Race == input$selected_race)
     }
   })
-  
   volunteer_map_data_reactive <- reactive({
     volunteer_data <- filtered_volunteer_data() %>%
       count(County, name = "Volunteers")
-    
     left_join(volunteer_data, va_population, "County") %>%
       mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
       left_join(va_counties, ., "County") %>%
@@ -172,7 +144,6 @@ server <- function(input, output, session) {
                                 "Population: ", Population, "<br>",
                                 "Volunteer Rate: ", VolunteerRate, "%"))
   })
-  
   output$volunteer_map <- renderLeaflet({
     data <- volunteer_map_data_reactive()
     if (nrow(data) == 0 || all(is.na(data$VolunteerRate))) {
@@ -192,40 +163,6 @@ server <- function(input, output, session) {
                   title="Volunteers as % of Pop.", opacity=1)
     }
   })
-  
-  output$Rplot <- renderPlotly({
-    aggregated_data <- Combined_Participation_Counts %>%
-      group_by(Year, Region) %>%
-      summarise(Total = sum(`County Totals`, na.rm = TRUE))
-      # ungroup()
-    
-    # Define custom colors for regions
-    region_colors <- c(
-      "Northwest" = "orange",
-      "Northeast" = "lightgoldenrod",   # Light orange
-      "Central" = "blue",
-      "Southeast" = "lightblue",
-      "Southwest" = "maroon"
-    )
-    
-    # Plot grouped bar chart
-    p <- ggplot(aggregated_data, aes(x = Year, y = Total, fill = Region)) +
-      geom_bar(stat = "identity", position = "dodge") +
-      scale_fill_manual(values = region_colors, name = "Region") +
-      labs(
-        x = "Year",
-        y = "Total Participation",
-        title = "Total Participation in 4-H Programs"
-      ) +
-      theme_bw() +
-      theme(
-        plot.title = element_text(family = "Helvetica", size = 18, face = "bold"),
-        axis.title = element_text(family = "Georgia", size = 14),
-        axis.text = element_text(family = "Open Sans", size = 12)
-      )
-    ggplotly(p)
-  })
-  
   # === PARTICIPATION MAP ===
   fourh_data <- reactive({
     read_csv("annualprogreport.csv") %>%
@@ -239,27 +176,20 @@ server <- function(input, output, session) {
         Total = rowSums(select(., starts_with("e"), starts_with("r")), na.rm = TRUE)
       )
   })
-  
   output$fourh_map <- renderLeaflet({
     req(input$selected_participation_group)
-    
     df <- left_join(va_counties, fourh_data(), by = "County") %>% st_as_sf()
-    
     selected_values <- df[[input$selected_participation_group]]
     selected_values[is.na(selected_values)] <- 0
-    
     total_values <- df$Total
     total_values[is.na(total_values)] <- 0
-    
     pal <- colorBin("Purples", domain = selected_values, bins = 5, na.color = "#f0f0f0")
-    
     df <- df %>%
       mutate(label_4h = paste0(
         "<strong>", toupper(County), "</strong><br>",
         "Selected Group: ", selected_values, "<br>",
         "Total Participants: ", total_values
       ))
-    
     leaflet(df) %>%
       addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
@@ -272,8 +202,6 @@ server <- function(input, output, session) {
       addLegend("bottomright", pal = pal, values = selected_values,
                 title = "4-H Participants", opacity = 1)
   })
-  
-  
   # === VOLUNTEERS VS PARTICIPATION ===
   ratio_df <- reactive({
     full_join(
@@ -284,7 +212,6 @@ server <- function(input, output, session) {
       mutate(RatioVP = ifelse(Participants > 0,
                               round(Volunteers / Participants * 100, 2), NA))
   })
-  
   output$vol_particip_map <- renderLeaflet({
     data <- left_join(va_counties, ratio_df(), "County") %>% st_as_sf()
     pal <- colorBin("RdYlBu", domain = data$RatioVP,
@@ -304,9 +231,8 @@ server <- function(input, output, session) {
       addLegend("bottomright", pal=pal, values=data$RatioVP,
                 title="% Volunteers of Participants", opacity=1)
   })
-  
   # === DEMOGRAPHIC MAP ===
-  demographic_data <- read_csv("newcountiesdemographics.csv") %>%
+  demographic_data <- read_csv("countiesdemographics.csv") %>%
     group_by(site_county) %>%
     summarise(total_participants = sum(participants_total, na.rm = TRUE)) %>%
     mutate(
@@ -315,7 +241,6 @@ server <- function(input, output, session) {
       County = gsub(" city", "", County),
       County = trimws(County)
     )
-  
   population_data <- read_csv("virginia2024population.csv",
                               skip = 2,
                               col_names = c("State_County", "Population")) %>%
@@ -331,15 +256,11 @@ server <- function(input, output, session) {
       Population = ifelse(County == "franklin", 54477, Population)
     ) %>%
     select(County, Population)
-  
   demographic_data <- left_join(demographic_data, population_data, "County") %>%
     mutate(participation_rate = (total_participants / Population) * 100)
-  
   demographic_map_data <- left_join(va_counties, demographic_data, "County") %>% st_as_sf()
-  
   pal_demo <- colorBin("YlOrRd", domain = demographic_map_data$participation_rate,
                        bins = 5, na.color = "#f0f0f0")
-  
   demographic_map_data <- demographic_map_data %>%
     mutate(label_demo = paste0(
       "<strong>", toupper(County), "</strong><br>",
@@ -347,7 +268,6 @@ server <- function(input, output, session) {
       "County Population: ", format(Population, big.mark = ","), "<br>",
       "Participation Rate: ", round(participation_rate, 2), "%"
     ))
-  
   output$demographic_map <- renderLeaflet({
     leaflet(demographic_map_data) %>%
       addProviderTiles("CartoDB.Positron") %>%
@@ -362,10 +282,13 @@ server <- function(input, output, session) {
                 values=demographic_map_data$participation_rate,
                 title="Participation Rate (%)", opacity=1)
   })
-  
 }
-
 # === RUN APP ===
 shinyApp(ui, server)
-
-
+# Trimming The Fat  -------------------------------------------------------
+# Read the original R script
+original_code <- readLines("compressing_code_june_25.R")
+# Remove blank lines and lines with only whitespace
+trimmed_code <- original_code[!grepl("^\\s*$", original_code)]
+# Write the cleaned code to a new file
+writeLines(trimmed_code, "compressed_code_june_25.R")

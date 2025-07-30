@@ -79,7 +79,7 @@ ui <- fluidPage(
              
     ),
     
-    tabPanel("Demographic Data",
+    tabPanel("VCE Program Participation",
              
              h3("Program Participation Demographics"),
              
@@ -140,8 +140,8 @@ server <- function(input, output, session) {
     ) %>%
     # Fix Fairfax and Franklin County population
     mutate(
-      Population = ifelse(County == "fairfax", 1147532, Population),
-      Population = ifelse(County == "franklin", 54477, Population)
+      Population = ifelse(County == "fairfax", 1160925, Population),
+      Population = ifelse(County == "FRANKLIN", 55637, Population)
     ) %>% select(County, Population)
   
   # Merging data
@@ -335,3 +335,5 @@ server <- function(input, output, session) {
 # Running the Website
 
 shinyApp(ui = ui, server = server)
+
+setwd("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\Clean Data")

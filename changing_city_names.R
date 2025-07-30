@@ -27,3 +27,22 @@ write.csv(county_demographics_name_change, "newcountiesdemographics.csv")
 # Remove "(city)" from the relevant column
 # Save the updated data if needed
 # write.csv(data, "yourfile_updated.csv", row.names = FALSE)
+
+
+# June 23 Work ------------------------------------------------------------
+
+
+
+# Remove the suffix "(city)"
+newcountiesdemographics$site_county <- gsub(" \\(city\\)", "", county_demographics_name_change$site_county)
+
+newcountiesdemographics$site_county <- ifelse(
+  county_demographics_name_change$site_county == "James",
+  "James City",
+  ifelse(
+    newcountiesdemographics$site_county == "Charles",
+    "Charles City",
+    newcountiesdemographics$site_county
+  )
+)
+

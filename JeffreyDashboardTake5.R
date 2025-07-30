@@ -1,6 +1,4 @@
-# === LIBRARIES ===
-
-setwd("C:\\Users\\jeffr\\Desktop\\diego_and_jeffrey_initial_vce_data")
+# LIBRARIES
 
 library(shiny)
 
@@ -20,13 +18,21 @@ library(tigris)
 
 library(tidycensus)
 
+# Read your R script into R as lines
+lines <- readLines("JeffreyDashboardTake5.R")
+
+# Remove empty lines (lines that are completely blank or contain only whitespace)
+clean_lines <- lines[grepl("\\S", lines)]
+
+# Write the cleaned lines back to a new file
+writeLines(clean_lines, "JeffreyDashboardTake5_cleaned.R")
 
 
 options(tigris_use_cache = TRUE)
 
 
 
-# === HELPER ===
+# HELPER
 
 clean_county <- function(x) {
   
@@ -52,23 +58,113 @@ ui <- fluidPage(
   
   tags$head(tags$style(HTML("
 
-    h1, h2, h3, h4 {
-
-      color:#2e7d32;
-
-      font-weight:bold;
-
-    }
+    h1, h2, h3, h4 { color:#2e7d32; font-weight:bold; }
 
   "))),
   
-  h1("Volunteer Data Dashboard"),
+  h1("Exploring Engagement in Virginia 4-H Programs"),
   
   tabsetPanel(
     
+    # Home Tab
+    
+    tabPanel("Home",
+             
+             h2("Welcome"),
+             
+             p("This dashboard visualizes volunteer engagement and 4-H participation ",
+               
+               "across Virginia counties. Use the tabs above to explore the data."),
+             
+             hr(),
+             
+             h3("Purpose / Background"),
+             
+             p("The goal of this project is to identify potential gaps between the demographics of communities ",
+               
+               "and the populations served by existing programming, as well as potential demographic gaps ",
+               
+               "between volunteers and their communities at large. This project will be driven by American ",
+               
+               "Community Survey data and Virginia Cooperative Extension programming needs."),
+             
+             
+             
+             h3("Methodology"),
+             
+             tags$ul(
+               
+               tags$li(strong("Data Sources:"),
+                       
+                       tags$ul(
+                         
+                         tags$li("Better Impact volunteer records"),
+                         
+                         tags$li("PEARS 4-H Annual Program Reports"),
+                         
+                         tags$li("American Community Survey (ACS) population data")
+                         
+                       )),
+               
+               tags$li("County names standardized for consistency."),
+               
+               tags$li("Volunteer and participant counts aggregated by county."),
+               
+               tags$li("Rates calculated against county population or program totals."),
+               
+               tags$li(strong("Purpose:"),
+                       
+                       "By identifying the areas of Virginia that need support and comparing them to where ",
+                       
+                       "Virginia Cooperative Extension’s resources are currently being allocated, this analysis ",
+                       
+                       "aims to give VCE stakeholders a clearer picture of community needs and how best to direct ",
+                       
+                       "future outreach and support.")
+               
+               
+               
+               
+               
+             ),
+             
+             h3("How to Use This Dashboard"),
+             
+             tags$ol(
+               
+               tags$li(strong("Volunteer County Data:"), " View distribution of volunteers and comparison against the total population in different counties."),
+               
+               tags$li(strong("Participation County Data:"), " Explore program reach by looking at the number of participants by county."),
+               
+               tags$li(strong("Volunteers vs Participation:"), " Comparison of volunteers vs participants in each county"),
+               
+               tags$li(strong("Demographic Data:"), " Comparison of participants in VCE programs and population across counties. ")
+               
+             ),
+             
+             h3("Insights to Explore"),
+             
+             tags$ul(
+               
+               tags$li("Counties with high volunteer engagement per capita"),
+               
+               tags$li("Areas where participant numbers exceed volunteer capacity"),
+               
+               tags$li("Demographic underrepresentation in 4-H programs")
+               
+             ),
+             
+             h3("Acknowledgments"),
+             
+             p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
+             
+    ),
+    
+    # Tabs
+    
     tabPanel("Volunteer County Data",
              
-             h3("County Data"),
+             h3("Volunteer Data"),
              
              p("Monitor the county data for volunteers"),
              
@@ -112,15 +208,19 @@ ui <- fluidPage(
 
 
 
-# === SERVER ===
+# SERVER
 
 server <- function(input, output, session) {
   
-  census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7", install = TRUE, overwrite = TRUE)
+  
+  
+  census_api_key("6ee5ecd73ef70e9464ee5509dec0cdd4a3fa86c7",
+                 
+                 install = TRUE, overwrite = TRUE)
   
   
   
-  # === Volunteers ===
+  # Volunteers
   
   volunteer_data <- read_csv("countiesimpact.csv") %>%
     
@@ -128,9 +228,7 @@ server <- function(input, output, session) {
     
     mutate(County = clean_county(County)) %>%
     
-    group_by(County) %>%
-    
-    summarise(Volunteers = n(), .groups = "drop")
+    group_by(County) %>% summarise(Volunteers = n(), .groups = "drop")
   
   
   
@@ -162,6 +260,8 @@ server <- function(input, output, session) {
   
   
   
+  # Volunteer map
+  
   volunteer_map_data <- left_join(volunteer_data, va_population, "County") %>%
     
     mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
@@ -170,13 +270,17 @@ server <- function(input, output, session) {
   
   
   
-  pal_vol <- colorBin("YlGnBu",
-                      
-                      domain = volunteer_map_data$VolunteerRate,
-                      
-                      bins   = seq(0, ceiling(max(volunteer_map_data$VolunteerRate, na.rm=TRUE)*4)/4, 0.25),
-                      
-                      na.color="#f0f0f0")
+  pal_vol <- colorBin(
+    
+    "YlGnBu",
+    
+    domain   = volunteer_map_data$VolunteerRate,
+    
+    bins     = seq(0, ceiling(max(volunteer_map_data$VolunteerRate, na.rm=TRUE)*4)/4, 0.25),
+    
+    na.color = "#f0f0f0"
+    
+  )
   
   
   
@@ -216,19 +320,19 @@ server <- function(input, output, session) {
         
       ) %>%
       
-      addLegend("bottomright", pal=pal_vol, values=volunteer_map_data$VolunteerRate,
+      addLegend("bottomright", pal=pal_vol,
                 
-                title="Volunteers as % of Population", opacity=1)
+                values=volunteer_map_data$VolunteerRate,
+                
+                title="Volunteers as % of Pop.", opacity=1)
     
   })
   
   
   
-  # === 4-H Participation ===
+  # 4-H Participation
   
   fourh_raw <- read_csv("annualprogreport.csv")
-  
-  
   
   fourh_data <- fourh_raw %>%
     
@@ -288,13 +392,17 @@ server <- function(input, output, session) {
   
   
   
-  # === Volunteers vs Participants ===
+  # Volunteers vs Participants
   
-  ratio_df <- full_join(volunteer_data,
-                        
-                        fourh_data %>% select(County, Participants = Total),
-                        
-                        by = "County") %>%
+  ratio_df <- full_join(
+    
+    volunteer_data,
+    
+    fourh_data %>% select(County, Participants = Total),
+    
+    by = "County"
+    
+  ) %>%
     
     mutate(RatioVP = ifelse(Participants > 0,
                             
@@ -304,7 +412,29 @@ server <- function(input, output, session) {
   
   ratio_map_data <- left_join(va_counties, ratio_df, "County") %>% st_as_sf()
   
-  pal_ratio <- colorBin("RdYlBu", domain = ratio_map_data$RatioVP, bins = 5, na.color="#f0f0f0")
+  
+  
+  # Color Scale: change every 100%
+  
+  max_ratio  <- max(ratio_map_data$RatioVP, na.rm = TRUE)
+  
+  breaks_100 <- seq(0, ceiling(max_ratio / 100) * 100, by = 100)
+  
+  
+  
+  pal_ratio <- colorBin(
+    
+    "RdYlBu",
+    
+    domain   = ratio_map_data$RatioVP,
+    
+    bins     = breaks_100,
+    
+    na.color = "#f0f0f0"
+    
+  )
+  
+  # -------------------------------------------------------
   
   
   
@@ -344,17 +474,21 @@ server <- function(input, output, session) {
         
       ) %>%
       
-      addLegend("bottomright", pal=pal_ratio, values=ratio_map_data$RatioVP,
+      addLegend("bottomright", pal=pal_ratio,
                 
-                title="% Volunteers of Participants", opacity=1)
+                values=ratio_map_data$RatioVP,
+                
+                title="% Volunteers of Participants",
+                
+                opacity=1)
     
   })
   
   
   
-  # === Demographic Map (table removed) ===
+  # Demographic Map
   
-  demographic_data <- read_csv("newcountiesdemographics.csv") %>%
+  demographic_data <- read_csv("countiesdemographics.csv") %>%
     
     group_by(site_county) %>%
     
@@ -374,7 +508,9 @@ server <- function(input, output, session) {
   
   
   
-  population_data <- read_csv("virginia2024population.csv", skip = 2,
+  population_data <- read_csv("virginia2024population.csv",
+                              
+                              skip = 2,
                               
                               col_names = c("State_County", "Population")) %>%
     
@@ -410,31 +546,25 @@ server <- function(input, output, session) {
   
   
   
-  demographic_map_data <- left_join(va_counties, demographic_data, "County") %>%
-    
-    st_as_sf()
+  demographic_map_data <- left_join(va_counties, demographic_data, "County") %>% st_as_sf()
   
-  
-  
-  demographic_pal <- colorBin("YlOrRd",
-                              
-                              domain = demographic_map_data$participation_rate,
-                              
-                              bins = 5, na.color = "#f0f0f0")
+  pal_demo <- colorBin("YlOrRd", domain = demographic_map_data$participation_rate,
+                       
+                       bins = 5, na.color = "#f0f0f0")
   
   
   
   demographic_map_data <- demographic_map_data %>%
     
-    mutate(demographic_label = paste0(
+    mutate(label_demo = paste0(
       
       "<strong>", toupper(County), "</strong><br>",
       
       "Total Participants: ", total_participants, "<br>",
       
-      "County Population: ", format(Population, big.mark=","), "<br>",
+      "County Population: ", format(Population, big.mark = ","), "<br>",
       
-      "Participation Rate: ", round(participation_rate,2), "%"
+      "Participation Rate: ", round(participation_rate, 2), "%"
       
     ))
   
@@ -448,11 +578,11 @@ server <- function(input, output, session) {
       
       addPolygons(
         
-        fillColor = ~demographic_pal(participation_rate),
+        fillColor = ~pal_demo(participation_rate),
         
         color = "black", weight = 1, fillOpacity = 0.7,
         
-        label = lapply(demographic_map_data$demographic_label, htmltools::HTML),
+        label = lapply(demographic_map_data$label_demo, htmltools::HTML),
         
         highlightOptions = highlightOptions(weight=2,color="#666",
                                             
@@ -460,7 +590,7 @@ server <- function(input, output, session) {
         
       ) %>%
       
-      addLegend("bottomright", pal=demographic_pal,
+      addLegend("bottomright", pal=pal_demo,
                 
                 values=demographic_map_data$participation_rate,
                 

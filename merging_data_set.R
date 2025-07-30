@@ -4,6 +4,7 @@ library(tidyverse)
 library(dplyr)
 library(tidycensus)
 #2024 - 2025
+
 Participation_2024_2025_thru_June_2 <- Participation_2024_2025_thru_June_2 %>%
   rename(
     "Youth Members of Organized 4-H Community Clubs" = "a",
@@ -266,3 +267,59 @@ library(tidyverse)
 #AS AN EXAMPLE, I RAN CODE TO FIND THE PERCENTAGE OF PEOPLE
 #65 AND OVER WHO ARE DISABLED, BUT NOT INSTITUTIONALIZED
 #ACROSS ALL VIRGINIA COUNTIES AND INDEPENDENT CITIES
+
+percentage_in_poverty_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP03_0119E")
+
+#THIS RESULT WAS NOT HELPFUL... ALL THE ESTIMATES AND MARGINS OF ERROR WERE N/A
+#FOUND OUT THAT RUNNING THE "ESTIMATE" VARIABLES TURNED UP
+#NOTHING. RUN THE "PERCENT" VARIABLES INSTEAD
+
+percentage_in_poverty_with_children_under_18_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP03_0120PE")
+
+percentage_all_VA_families_in_poverty_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP03_0119PE")
+
+percentage_in_poverty_w_children_under_5_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP03_0121PE")
+
+total_households_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0001PE")
+
+percent_married_households_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0002PE")
+
+married_w_children_under_18_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0003PE")
+
+cohabiting_households_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0004PE")
+
+cohabiting_w_children_under_18_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0005PE")
+
+single_fathers_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0007PE")
+
+single_mothers_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0011PE")
+
+avg_fam_size_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0017E")
+
+pop_in_households_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0018E")
+
+#READING IN A TABLE FROM CENSUS.GOV
+
+va_st_and_county_pop_2021 <- co_est2024_pop_51
+
+pop_in_housholds_percent_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0018PE")
+
+percent_gparents_resp_for_gchildren_under_18_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0045PE")
+
+percent_gparents_resp_for_gchildren_5_and_older_2021 <- percent_gparents_resp_for_gchildren <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0049PE")
+
+perc_gparents_resp_for_children_under_18_married_2021<- percent_gparents_resp_for_gchildren <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0052PE")
+
+kindergarten_enrollment_2021 <- get_acs(geography = "county", state = "VA", year = 2021, survey = "acs5", variables = "DP02_0055PE")
+
+#FOR THE CODE IN LINE 314, MUST FIND DATA ON THE CHILDREN 
+#IN THE KINDERGARTEN AGE RANGE TO COMPARE IT TO
+
+
+# June 6 2025 -------------------------------------------------------------
+
+#GOING TO EXPERIMENT FILTERING ROWS OUT OF THE DEMOGRAPHICS
+#EXCEL SHEET TO MATCH WITH SCHOOL ENROLLMENT RATES, AND OTHER VARIABLES
+
+kindergarten_aged_population
+

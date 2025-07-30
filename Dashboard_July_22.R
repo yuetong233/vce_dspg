@@ -117,23 +117,8 @@ ui <- fluidPage(
                        ),
                        
                        h3("Findings"),
-                       
-                       p("Our analysis revealed regional disparities in engagement with Virginia 
-                         Cooperative Extension programs. Specifically, inside of 4-H, counties like 
-                         Fairfax, Montgomery, and Norfolk City showed strong volunteer-to-participant 
-                         ratios, indicating well-established infrastructure in programs that support 
-                         youth engagement. In contrast, many other counties displayed lower levels of 
-                         both volunteers and participants in 4-H, suggesting areas where more outreach is
-                         needed to strengthen local program delivery."),
-                       
-                       p("A regression analysis of broader Virginia Cooperative Extension data showed that 
-                         home ownership and being of middle school age are positively correlated 
-                         with higher level of engagement. On the other hand communities with more spanish 
-                         speaking residents and those with higher mortgages tend to participate 
-                         less in extension programs. This highlights potential barriers related with 
-                         language and access. These findings emphasize the importance of targeted 
-                         strategies to ensure a more evenly distributed participation across Virginia 
-                         counties."),
+                       p("Our analysis revealed regional disparities in engagement with Virginia Cooperative Extension programs. Specifically, inside of 4-H, counties like Fairfax, Montgomery, and Norfolk City showed strong volunteer-to-participant ratios, indicating well-established infrastructure in programs that support youth engagement. In contrast, many other counties displayed lower levels of both volunteers and participants in 4-H, suggesting areas where more outreach is needed to strengthen local program delivery."),
+                       p("A regression analysis of broader Virginia Cooperative Extension data showed that home ownership and having a middle school education are positively correlated with higher level of engagement. On the other hand communities with more spanish speaking residents and those with higher mortgage burdens tend to participate less in extension programs. This highlights potential barriers related with language and access. These findings emphasize the importance of targeted strategies to ensure a more evenly distributed participation across Virginia counties."),
                        
                        h3("Acknowledgments"),
                        p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
@@ -197,26 +182,25 @@ ui <- fluidPage(
               tabPanel("Does Homelife Predict Participation?",
                        h3("Regression Results"),
                        p("There is a positive correlation
-                         between home ownership, and VCE
+                         between lack of education past middle school, home ownership, and VCE
                          participation. Additionally, there are pretty strong negative
                          correlations between a higher mortgage, Spanish speakers and participation - 
                          indicating that there is less participation among higher income 
-                         families, as well as Spanish speakers."),
+                         families, as well as Spanish speakers.
                          
-                         p("These results are easily interpretable. There is clearly
+                         These results are easily interpretable. There is clearly
                          a language barrier for Spanish speakers, and other people who
                          aren't native English speakers - leading to lower participation
-                         from these groups.") ,
+                         from these groups. 
                          
-                         p("Home ownership and having a mortage of $3,000 or more correlate
+                         Home ownership and having a mortage of $3,000 or more correlate
                          with better economic health, which makes participation in these 
-                         programs more feasible."),
+                         programs more feasible. 
                          
-                         p("The positive correlation between middle school education and participation does not
+                         The correlation of middle school education and participation does not
                          mean that people who dropped out of middle school are more likely to participate - 
-                         rather it means that there is a higher rate of middle school aged people
+                         rather it means that there is a higher likelihood of middle school aged people
                          participating in these programs"),
-                       
                        htmlOutput("regression_results")
                        
               )
@@ -703,3 +687,10 @@ server <- function(input, output, session) {
 
 # === RUN APP ===
 shinyApp(ui, server)
+
+
+
+
+
+
+

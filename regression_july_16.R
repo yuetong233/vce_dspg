@@ -1,81 +1,19 @@
 install.packages("lme4")
 install.packages("car")
+install.packages("kableExtra")
+install.packages("broom")
 
-rm(merged_data)
 library(lme4)
 library(car)
 library(openxlsx)
+library(broom)
+library(kableExtra)
 getwd()
-setwd("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\Intermediate Data")
+setwd("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard")
 
 library(dplyr)
 
-volunteers_participants_2025 <- volunteers_participants_2025 %>%
-  mutate(Counties = ifelse(Counties == "James", "James City", Counties))
-
-# === STANDARDIZING THE COUNTY COLUMNS
-write.xlsx(volunteers_participants_2025, "volunteers_participants_2025.xlsx")
-write.xlsx(independent_variables, "independent_variables.xlsx")
-
-volunteers_participants_2025 <- volunteers_participants_2025 %>%
-  rename("Counties" = "County")
-
-# === SEEING WHICH COUNTIES ARE IN ONE DATA FRAME BUT NOT THE OTHER
-# Find County entries in 'independent_variables' not present in 'volunteers_participants_2025'
-missing_counties <- independent_variables %>%
-  filter(!(County %in% volunteers_participants_2025$Counties)) %>%
-  select(County)
-
-# View the missing entries
-print(missing_counties)
-
-
-duplicate_names <- merged_data %>%
-  group_by(Counties) %>%
-  filter(n() > 1) %>%
-  summarise(count = n()) %>%
-  ungroup()
-
-print(duplicate_names)
-
-# Remove duplicates
-rows_to_remove <- c(37, 38, 45, 46, 104, 105, 108, 109)
-merged_data <- merged_data[-rows_to_remove, ]
-
-
-
-merged_data <- subset(merged_data, select = -Volunteers)
-
-
-write.xlsx(merged_data, "regression_data_july_16.xlsx")
-
-
-# === PUTTING EVERYTHING TOGETHER ===
-
-library(dplyr)
-library(stringr)
-
-#STEP 1: STANDARDIZE THE NAMES
-independent_variables_copy <- independent_variables_copy %>%
-  mutate(County = str_replace(County, "\\s*,\\s*Virginia$", "")) %>%
-  mutate(County = str_replace(County, "\\s*(County|city)\\s*$", "")) %>%
-  mutate(County = str_trim(County))
-
-
-
-independent_variables <- independent_variables %>%
-  mutate(County = str_replace(County, "\\s*,\\s*Virginia$", "")) %>%
-  mutate(County = str_replace(County, "\\s*(County|city)\\s*$", "")) %>%
-  mutate(County = str_trim(County))
-
-
-
-# Merge on the 'County' and 'Counties' columns
-merged_data <- volunteers_participants_2025 %>%
-  inner_join(independent_variables, by = c("Counties" = "County"))
-
-
-
+merged_data <- read.xlsx("C:\\Users\\jeffr\\Desktop\\VCE Excel Data\\VCEDashboard\\merged_data.xlsx")
 # === RUNNING THE INITIAL REGRESSION ===
 
 # Loop through predictor variables
@@ -94,35 +32,115 @@ merged_data <- merged_data %>%
 
 # === REVISING THE REGRESSION ===
 
-model <- lm(log(Participants +1) ~ log(`Average Household Size`) + 
-              log(`Median Household Income` +1) + 
-              log(`Average Household Size of Owned Dwellings` +1) +
-              log(`Number of Dwellings That are Owned` +1) +
-              log(`Average Household Size of Rented Dwellings` +1) +
-              `Percent Got A Bachelors Degree` +
-              `Percent Did Not Graduate College` +
-              `Percent of People who Have Monthly Costs That Are At Least 35% of Income` +
-              `Percent of Families With One or More Children Under 18 y/o` +
-              `Percent Only Graduated High School` +
-              `Percent Not Educated Past Middle School` +
-              `Percent of Families in Poverty who Have Children` +
-              `Percent of Married Couples Who Have Children` +
-              `Percent Did Not Graduate High School` +
-              `Percent of People 16 and Older Who Are Employed` +
-              `Percent of People 16 and Older Who Are Unemployed` +
-              `Percent of Families Where Both Parents Work` +
-              `Percentage of Homes with a Mortgage Between $1500 and $1999` +
-              `Percentage of Homes with a Mortgage $3000 or more` +
-              `Percentage of Homes with a Mortgage Under $500` +
-              `Percent of Divorced Men` +
-              `Percent of Divorced Women` +
-              `Percent of Dwellings That are Rented` +
-              `Percent of Single Fathers` +
-              `Percent of Single Mothers` +
-              `Percentage of Asian/Pacific Islander Language Speakers` +
-              `Percentage of Spanish Speakers` 
+model <- lm(log(Participants +1) ~ log(`Average.Household.Size`) + 
+              log(`Median.Household.Income` +1) + 
+              log(`Average.Household.Size.of.Owned.Dwellings` +1) +
+              log(`Number.of.Dwellings.That.are.Owned` +1) +
+              log(`Average.Household.Size.of.Rented.Dwellings` +1) +
+              `Percent.Got.A.Bachelors.Degree` +
+              `Percent.Did.Not.Graduate.College` +
+              `Percent.of.People.who.Have.Monthly.Costs.That.Are.At.Least.35%.of.Income` +
+              `Percent.of.Families.With.One.or.More.Children.Under.18.y/o` +
+              `Percent.Only.Graduated.High.School` +
+              `Percent.Not.Educated.Past.Middle.School` +
+              `Percent.of.Families.in.Poverty.who.Have.Children` +
+              `Percent.of.Married.Couples.Who.Have.Children` +
+              `Percent.Did.Not.Graduate.High.School` +
+              `Percent.of.People.16.and.Older.Who.Are.Employed` +
+              `Percent.of.People.16.and.Older.Who.Are.Unemployed` +
+              `Percent.of.Families.Where.Both.Parents.Work` +
+              `Percentage.of.Homes.with.a.Mortgage.Between.$1500.and.$1999` +
+              `Percentage.of.Homes.with.a.Mortgage.$3000.or.more` +
+              `Percentage.of.Homes.with.a.Mortgage.Under.$500` +
+              `Percent.of.Divorced.Men` +
+              `Percent.of.Divorced.Women` +
+              `Percent.of.Dwellings.That.are.Rented` +
+              `Percent.of.Single.Fathers` +
+              `Percent.of.Single.Mothers` +
+              `Percentage.of.Asian/Pacific.Islander.Language.Speakers` +
+              `Percentage.of.Spanish.Speakers` 
             , data = merged_data)
 
 summary(model)
 
 stargazer(model, type = "text")
+
+
+# === MAKING IT LOOK PRETTIER ===
+
+
+
+  model <- lm(log(Participants + 1) ~ 
+                log(`Average.Household.Size`) + 
+                log(`Median.Household.Income` + 1) + 
+                log(`Average.Household.Size.of.Owned.Dwellings`) +
+                log(`Number.of.Dwellings.That.are.Owned`) +
+                log(`Average.Household.Size.of.Rented.Dwellings`) +
+                `Percent.Got.A.Bachelors.Degree` +
+                `Percent.Did.Not.Graduate.College` +
+                `Percent.of.People.who.Have.Monthly.Costs.That.Are.At.Least.35%.of.Income` +
+                `Percent.of.Families.With.One.or.More.Children.Under.18.y/o` +
+                `Percent.Only.Graduated.High.School` +
+                `Percent.Not.Educated.Past.Middle.School` +
+                `Percent.of.Families.in.Poverty.who.Have.Children` +
+                `Percent.of.Married.Couples.Who.Have.Children` +
+                `Percent.Did.Not.Graduate.High.School` +
+                `Percent.of.People.16.and.Older.Who.Are.Employed` +
+                `Percent.of.People.16.and.Older.Who.Are.Unemployed` +
+                `Percent.of.Families.Where.Both.Parents.Work` +
+                `Percentage.of.Homes.with.a.Mortgage.Between.$1500.and.$1999` +
+                `Percentage.of.Homes.with.a.Mortgage.$3000.or.more` +
+                `Percentage.of.Homes.with.a.Mortgage.Under.$500` +
+                `Percent.of.Divorced.Men` +
+                `Percent.of.Divorced.Women` +
+                `Percent.of.Dwellings.That.are.Rented` +
+                `Percent.of.Single.Fathers` +
+                `Percent.of.Single.Mothers` +
+                `Percentage.of.Asian/Pacific.Islander.Language.Speakers` +
+                `Percentage.of.Spanish.Speakers`,
+              data = merged_data)
+  
+  stargazer(model, type = "text")
+
+  # Get tidy output
+  tidy_results <- tidy(model)
+  
+  # Add significance markers based on p-value thresholds
+  tidy_results <- tidy_results %>%
+    mutate(
+      significance = case_when(
+        p.value < 0.01 ~ "***",
+        p.value < 0.05 ~ "**",
+        p.value < 0.1  ~ "*",
+        TRUE ~ ""
+      ),
+      # Append significance symbols to term labels
+      term_display = paste0(term, significance),
+      # Round estimates and standard errors for clarity
+      estimate = round(estimate, 3),
+      std.error = round(std.error, 3),
+      statistic = round(statistic, 2),
+      p.value_display = ifelse(p.value < 0.001, "<0.001", round(p.value, 3))
+    )
+  
+  # Create a formatted table with highlights for significant variables
+  kable_table <- tidy_results %>%
+    select(term_display, estimate, std.error, statistic, p.value_display) %>%
+    kable(caption = "Regression Results") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed")) 
+
+# === HIGHLIGHTING STATISTICALLY SIGNIFICANT ROWS ===
+  
+  positively_significant <- c(5, 12 )
+  
+  kable_table <- kable_table %>%
+    row_spec(positively_significant, background = "green") 
+
+  negatively_significant <- c(20, 28)
+  
+  kable_table <- kable_table %>%
+    row_spec(negatively_significant, background = "red")
+
+  kable_table
+
+

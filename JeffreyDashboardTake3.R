@@ -30,68 +30,19 @@ options(tigris_use_cache = TRUE)
 ui <- fluidPage(
   
   theme = bs_theme(bootswatch = "flatly"),
+  tags$head(tags$style(HTML("h1, h2, h3, h4 {color: #2e7d32; font-weight: bold;}"))),
   
-  
-  
-  tags$head(
-    
-    tags$style(HTML("
-
-      h1, h2, h3, h4 {
-
-        color: #2e7d32;
-
-        font-weight: bold;
-
-      }
-
-    "))
-    
-  ),
-  
-  
-  
-  h1("Volunteer Data Dashboard"),
-  
-  
-  
-  tabsetPanel(
-    
-    tabPanel("Volunteer County Data",
-             
-             h3("County Data"),
-             
-             p("Monitor the county data for volunteers"),
-             
-             
-             
-             leafletOutput("volunteer_map", height = "600px")
-             
-    ),
-    
-    
-    
-    tabPanel("4-H Data",
-             
-             p("More tables to come!!"),
-             tableOutput("fourh_totals"),
-             leafletOutput("fourh_map", height = "600px")
-             
-    ),
-    
-    tabPanel("VCE Program Participation",
-             
-             h3("Program Participation Demographics"),
-             
-             p("View demographic distribution across counties"),
-             
-             leafletOutput("demographic_map", height = "600px")
-             
-    )
-    
-  )
-  
-)
+   h1("Volunteer Data Dashboard"),
+  tabsetPanel(tabPanel("Volunteer County Data", h3("County Data"),
+ p("Monitor the county data for volunteers"),
+ leafletOutput("volunteer_map", height = "600px")),
+tabPanel("4-H Data", p("More tables to come!!"), 
+tableOutput("fourh_totals"),
+leafletOutput("fourh_map", height = "600px")),
+tabPanel("VCE Program Participation",
+h3("Program Participation Demographics"),
+p("View demographic distribution across counties"),
+leafletOutput("demographic_map", height = "600px"))))
 
 
 
@@ -103,13 +54,12 @@ server <- function(input, output, session) {
   
   # Clean volunteer data
   volunteer_data <- read.csv("countiesimpact.csv") %>%
-    filter(Hours != "did not log hours") %>%
-    mutate(
-      County = tolower(County),
-      County = gsub(" county", "", County),
-      County = gsub(" city", "", County),
-      County = trimws(County)
-    ) %>%
+  filter(Hours != "did not log hours") %>%
+  mutate(
+    County = tolower(County),
+    County = gsub(" county", "", County),
+    County = gsub(" city", "", County),
+    County = trimws(County)) %>%
     group_by(County) %>%
     summarise(Volunteers = n(), .groups = "drop")
   
@@ -119,8 +69,7 @@ server <- function(input, output, session) {
     mutate(
       County = tolower(NAME),
       County = gsub(" county", "", County),
-      County = trimws(County)
-    )
+      County = trimws(County))
   
   # Load population data
   va_population <- get_acs(
@@ -129,20 +78,22 @@ server <- function(input, output, session) {
     variables = "B01003_001",
     year = 2023,
     survey = "acs5",
-    output = "wide"
-  ) %>%
+    output = "wide") %>%
     mutate(
       County = tolower(NAME),
       County = gsub(" county, virginia", "", County),
       County = gsub(" city, virginia", "", County),
       County = trimws(County),
-      Population = B01003_001E
-    ) %>%
+      Population = B01003_001E) %>%
     # Fix Fairfax and Franklin County population
+    va_population <- va_population %>% 
     mutate(
-      Population = ifelse(County == "fairfax", 1160925, Population),
-      Population = ifelse(County == "FRANKLIN", 55637, Population)
-    ) %>% select(County, Population)
+      Population = case_when(
+        County == "fairfax" ~ 114474,
+        County == "franklin" ~ 54958,
+        TRUE ~ Population))
+  
+  
   
   # Merging data
   combined_data <- left_join(volunteer_data, va_population, by = "County") %>%
@@ -165,8 +116,7 @@ server <- function(input, output, session) {
       "<strong>", toupper(County), "</strong><br>",
       "Volunteers: ", ifelse(is.na(Volunteers), "N/A", Volunteers), "<br>",
       "Population: ", ifelse(is.na(Population), "N/A", Population), "<br>",
-      "Volunteer Rate: ", ifelse(is.na(VolunteerRate), "N/A", paste0(VolunteerRate, "%"))
-    ))
+      "Volunteer Rate: ", ifelse(is.na(VolunteerRate), "N/A", paste0(VolunteerRate, "%"))))
   
   # Map
   output$volunteer_map <- renderLeaflet({
@@ -182,17 +132,13 @@ server <- function(input, output, session) {
           weight = 2,
           color = "#666",
           fillOpacity = 0.9,
-          bringToFront = TRUE
-        )
-      ) %>%
+          bringToFront = TRUE)) %>%
       addLegend("bottomright",
                 pal = pal,
                 values = map_data$VolunteerRate,
                 title = "Volunteers as % of Population",
-                opacity = 1
-      ) %>%
-      setView(lng = -78.6569, lat = 37.4316, zoom = 6)
-  })
+                opacity = 1) %>%
+      setView(lng = -78.6569, lat = 37.4316, zoom = 6)})
   
   # --- 4-H Data Map ---
   fourh_raw_data <- read_csv("annualprogreport.csv")
@@ -207,9 +153,7 @@ server <- function(input, output, session) {
       Total = rowSums(select(., c(
         "eHispanic", "eNotHispanic", "eNotProvided", "ePreferNotToState",
         "rWhite", "rBlack", "rIndianAlaskan", "rHawaiianIslander",
-        "rAsian", "rMoreThanOne", "rUndetermined"
-      )), na.rm = TRUE)
-    )
+        "rAsian", "rMoreThanOne", "rUndetermined")), na.rm = TRUE))
   
   # Join 4-H data with VA counties shapefile
   fourh_map_data <- left_join(va_counties, fourh_data, by = "County") %>%
@@ -222,8 +166,7 @@ server <- function(input, output, session) {
   fourh_map_data <- fourh_map_data %>%
     mutate(fourh_label_content = paste0(
       "<strong>", toupper(County), "</strong><br>",
-      "Total Participants: ", ifelse(is.na(Total), "N/A", Total)
-    ))
+      "Total Participants: ", ifelse(is.na(Total), "N/A", Total)))
   
   # Render 4-H totals table
   
@@ -242,31 +185,25 @@ server <- function(input, output, session) {
           weight = 2,
           color = "#666",
           fillOpacity = 0.9,
-          bringToFront = TRUE
-        )
-      ) %>%
+          bringToFront = TRUE)) %>%
       addLegend("bottomright",
                 pal = fourh_pal,
                 values = fourh_map_data$Total,
                 title = "4-H Participants",
-                opacity = 1
-      ) %>%
-      setView(lng = -78.6569, lat = 37.4316, zoom = 6)
-  })
+                opacity = 1) %>%
+      setView(lng = -78.6569, lat = 37.4316, zoom = 6)})
   
   # --- Demographic Data Map ---
   # Read and process demographic data
   demographic_data <- read_csv("countiesdemographics.csv") %>%
     group_by(site_county) %>%
     summarise(
-      total_participants = sum(participants_total, na.rm = TRUE)
-    ) %>%
+      total_participants = sum(participants_total, na.rm = TRUE)) %>%
     mutate(
       County = tolower(site_county),
       County = gsub(" county", "", County),
       County = gsub(" city", "", County),
-      County = trimws(County)
-    )
+      County = trimws(County))
   
   # Read population data
   population_data <- read_csv("virginia2024population.csv", skip = 2, col_names = c("State_County", "Population")) %>%
@@ -277,15 +214,13 @@ server <- function(input, output, session) {
       County = gsub(" city, virginia", "", County),
       County = gsub("^.", "", County),  # Remove leading dot
       County = trimws(County),
-      Population = as.numeric(Population)
-    ) %>%
+      Population = as.numeric(Population)) %>%
     select(County, Population)
   
   # Join demographic data with population data
   demographic_data <- left_join(demographic_data, population_data, by = "County") %>%
     mutate(
-      participation_rate = (total_participants / Population) * 100
-    )
+      participation_rate = (total_participants / Population) * 100)
   
   # Join with VA counties shapefile
   demographic_map_data <- left_join(va_counties, demographic_data, by = "County") %>%
@@ -300,8 +235,7 @@ server <- function(input, output, session) {
       "<strong>", toupper(County), "</strong><br>",
       "Total Participants: ", ifelse(is.na(total_participants), "N/A", total_participants), "<br>",
       "County Population: ", ifelse(is.na(Population), "N/A", format(Population, big.mark=",")), "<br>",
-      "Participation Rate: ", ifelse(is.na(participation_rate), "N/A", paste0(round(participation_rate, 2), "%"))
-    ))
+      "Participation Rate: ", ifelse(is.na(participation_rate), "N/A", paste0(round(participation_rate, 2), "%"))))
   
   # Render demographic Leaflet map
   output$demographic_map <- renderLeaflet({
@@ -317,18 +251,13 @@ server <- function(input, output, session) {
           weight = 2,
           color = "#666",
           fillOpacity = 0.9,
-          bringToFront = TRUE
-        )
-      ) %>%
+          bringToFront = TRUE)) %>%
       addLegend("bottomright",
                 pal = demographic_pal,
                 values = demographic_map_data$participation_rate,
                 title = "Participation Rate (%)",
-                opacity = 1
-      ) %>%
-      setView(lng = -78.6569, lat = 37.4316, zoom = 6)
-  })
-}
+                opacity = 1) %>%
+      setView(lng = -78.6569, lat = 37.4316, zoom = 6)})}
 
 
 
