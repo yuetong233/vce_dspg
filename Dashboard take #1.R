@@ -1,4 +1,3 @@
-
 # === LIBRARIES ===
 library(shiny)
 library(shinyWidgets)
@@ -17,6 +16,8 @@ library(stargazer)
 library(openxlsx)
 library(knitr)
 library(kableExtra)
+library(tidyr)
+library(rsconnect)
 # === HELPER FUNCTION ===
 clean_county <- function(x) {
   x %>%
@@ -101,8 +102,8 @@ ui <- fluidPage(
                          tags$li(strong("4-H Volunteer County Data:"), " Explore volunteer engagement by viewing the number of 4-H volunteers by county for the 2023-2024 program year, including breakdowns by race and ethnicity."),
                          tags$li(strong("4-H Volunteers vs Participants:"), " Compare the number of 4-H volunteers to participants by county for the 2023-2024 program year, with volunteers shown as a percentage of participants to highlight engagement levels across Virginia."),
                          tags$li(strong("4-H Participation Trends:"), " View trends in 4-H participation from 2021 to 2024 to observe changes in program reach over time."),
-                         tags$li(strong("VCE Volunteer Data:"), " View the number of volunteers across all counties for the 2025 program year, including volunteer rates per capita to assess engagement relative to county populations."),
-                         tags$li(strong("VCE Participation Data:"), " View the number of participants across all counties for the 2025 program year, including participation rates per capita to assess program reach relative to county populations."),
+                         tags$li(strong("VCE Volunteer Data:"), " View the number of volunteers across all counties for the 2025 program year, including the racial and ethnic breakdown of volunteers to assess diversity in community engagement."),
+                         tags$li(strong("VCE Participation Data:"), " View the number of participants across all counties for the 2025 program year, including the racial and ethnic breakdown of participants to assess demographic reach within the program."),
                          tags$li(strong("VCE Volunteers vs Participants:"), " View the number of volunteers as a percentage of participants across all counties for the 2025 program year to compare engagement levels within Virginia Cooperative Extension programs."),
                          tags$li(strong("Does Homelife Predict Participation:"), " Explore the results of a regression analysis examining whether factors related to homelife and upbringing are associated with participation levels in Virginia Cooperative Extension programs.")
                        ),
@@ -125,10 +126,13 @@ ui <- fluidPage(
                        
                        h3("Findings"),
                        p("Our analysis revealed regional disparities in engagement with Virginia Cooperative Extension programs. Specifically, inside of 4-H, counties like Fairfax, Montgomery, and Norfolk City showed strong volunteer-to-participant ratios, indicating well-established infrastructure in programs that support youth engagement. In contrast, many other counties displayed lower levels of both volunteers and participants in 4-H, suggesting areas where more outreach is needed to strengthen local program delivery."),
-                       p("A regression analysis of broader Virginia Cooperative Extension data showed that home ownership and having a middle school education are positively correlated with higher level of engagement. On the other hand communities with more spanish speaking residents and those with higher mortgage burdens tend to participate less in extension programs. This highlights potential barriers related with language and access. These findings emphasize the importance of targeted strategies to ensure a more evenly distributed participation across Virginia counties."),
+                       p("A regression analysis of broader Virginia Cooperative Extension data showed that home ownership and having a middle school education are positively correlated with higher levels of engagement. On the other hand, communities with more Spanish-speaking residents and those with higher mortgage burdens tend to participate less in Extension programs. This highlights potential barriers related to language and access. These findings emphasize the importance of targeted strategies to ensure more evenly distributed participation across Virginia counties."),
+                       p("We identified a notable lack of participation among Hispanic communities in the Southwestern region of Virginia, particularly in Lee, Dickenson, Scott, Buchanan, and Russell counties. Although these areas are predominantly White, a more diverse population could be encouraged to participate through targeted outreach efforts, increased community engagement, and specialized language services. Addressing these barriers could foster greater inclusivity and ensure that these communities are better represented and supported within the program."),
+                      
+
                        
                        h3("Acknowledgments"),
-                       p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. ")
+                       p("Developed by Jeffrey Ogle and Diego Cuadra, with support from the Department of Agricultural and Applied Economics, Virginia Tech. This work is supported by the U.S. Department of Agriculture, National Institute of Food and Agriculture as part of the DATA-ACRE program [grant no. 2022-67037-36639 / project accession no. 2021-10424]. ")
               ),
               
               tabPanel("4-H Participation County Data",
@@ -175,12 +179,29 @@ ui <- fluidPage(
                        tags$img(src = "VCE_regions_map.png", width = "100%", alt = "VCE Regions Map")
               ),
               tabPanel("VCE Volunteer County Data",
-                       h3("Volunteer Data"),
+                       h3("Volunteer Counts by Race and Ethnicity"),
+                       selectInput("vce_race_filter", "Select Group:",
+                                   choices = c(
+                                     "All Volunteers" = "all",
+                                     "Hispanic" = "eth_hispanic",
+                                     "White" = "race_white",
+                                     "Black" = "race_black",
+                                     "Asian" = "race_asian"
+                                   )),
                        leafletOutput("vce_volunteer_map", height = "600px")
-              ), 
-              tabPanel("VCE Participation Data",
-                       h3("Program Participation Demographics"),
-                       leafletOutput("demographic_map", height = "600px")
+              ),
+              
+              tabPanel("VCE Participant County Data",
+                       h3("Participant Counts by Race and Ethnicity"),
+                       selectInput("participant_race_filter", "Select Group:",
+                                   choices = c(
+                                     "All Participants" = "all",
+                                     "Hispanic" = "eth_hispanic",
+                                     "White" = "race_white",
+                                     "Black" = "race_black",
+                                     "Asian" = "race_asian"
+                                   )),
+                       leafletOutput("participant_map", height = "600px")
               ),
               tabPanel("VCE Volunteers vs Participation",
                        h3("Volunteers as % of Participants"),
@@ -188,8 +209,8 @@ ui <- fluidPage(
               ),
               tabPanel("Does Homelife Predict Participation?",
                        h3("Regression Results"),
-                       p("As you can see, there is a positive correlation
-                         between lack of education past middle school, home ownership, and VCE
+                       p("There is a positive correlation
+                         between being of middle school age, home ownership, and VCE
                          participation. Additionally, there are pretty strong negative
                          correlations between a higher mortgage, Spanish speakers and participation - 
                          indicating that there is less participation among higher income 
@@ -397,50 +418,75 @@ server <- function(input, output, session) {
   ####VCEE start of Map
   # === NEW: VCE Volunteer Data Map ===
   
-  # Get VA population as you already do
-  va_population <- get_acs("county", state = "VA", variables = "B01003_001", year = 2023, survey = "acs5", output = "wide") %>%
-    transmute(County = clean_county(NAME), Population = B01003_001E) %>%
-    mutate(Population = ifelse(County == "fairfax", 1147532, Population),
-           Population = ifelse(County == "franklin",  54477, Population))
-  
-  # UPDATED: Read from the new file and use NewVolunteers
-  vce_volunteer_df <- read_excel("PEARS_BI_with_NewVolunteers.xlsx") %>%
-    transmute(
-      County = clean_county(County),
-      Volunteers = NewVolunteers  # Using the updated column
+  # === Load Volunteer Data ===
+  vce_volunteer_data <- read_excel("VCE_VolunteerCounty_Data.xlsx") %>%
+    filter(HoursWorked > 0, !is.na(CountyOrCity)) %>%
+    mutate(
+      County = tolower(trimws(CountyOrCity)),
+      Race = `CF - Demographic Information - Race`,
+      Ethnicity = `CF - Demographic Information - Ethnicity`
     )
   
-  # Merge volunteers data with population and counties shapefile
-  vce_volunteer_map_data <- left_join(vce_volunteer_df, va_population, by = "County") %>%
-    mutate(VolunteerRate = round(Volunteers / Population * 100, 2)) %>%
-    left_join(va_counties, ., by = "County") %>%
-    st_as_sf() %>%
-    mutate(label_vce_vol = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Volunteers: ", Volunteers, "<br>",
-      "Population: ", Population, "<br>",
-      "Volunteer Rate: ", VolunteerRate, "%"
-    ))
+  # === Reactive Filtering for Selected Group ===
+  filtered_vce_volunteer_data <- reactive({
+    data <- vce_volunteer_data
+    
+    switch(input$vce_race_filter,
+           "eth_hispanic" = data <- data %>% filter(Ethnicity == "Hispanic or Latino/a/x"),
+           "race_white" = data <- data %>% filter(Race == "05. White"),
+           "race_black" = data <- data %>% filter(Race == "03. Black or African American"),
+           "race_asian" = data <- data %>% filter(Race == "02. Asian"),
+           "all" = data <- data  # No filtering
+    )
+    
+    data
+  })
   
-  # Render the leaflet map
+  # === Reactive Volunteer Counts per County ===
+  vce_volunteer_map_data <- reactive({
+    # Total volunteers per county (regardless of filter)
+    total_counts <- vce_volunteer_data %>%
+      count(County, name = "TotalVolunteers")
+    
+    # Filtered group counts
+    group_counts <- filtered_vce_volunteer_data() %>%
+      count(County, name = "GroupVolunteers")
+    
+    merged_data <- left_join(va_counties, total_counts, by = "County") %>%
+      left_join(group_counts, by = "County") %>%
+      replace_na(list(GroupVolunteers = 0)) %>%
+      st_as_sf() %>%
+      mutate(label_vce = paste0(
+        "<strong>", toupper(County), "</strong><br>",
+        "Selected Group Volunteers: ", GroupVolunteers, "<br>",
+        "Total Volunteers: ", TotalVolunteers
+      ))
+    
+    merged_data
+  })
+  
+  # === Render Leaflet Map ===
   output$vce_volunteer_map <- renderLeaflet({
-    data <- vce_volunteer_map_data
-    pal <- colorBin("YlOrRd", domain = data$VolunteerRate,
-                    bins = 5, na.color = "#f0f0f0")
+    data <- vce_volunteer_map_data()
+    
+    pal <- colorBin("OrRd", domain = data$GroupVolunteers, bins = 5, na.color = "#f0f0f0")
     
     leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
-        fillColor = ~pal(VolunteerRate),
+        fillColor = ~pal(GroupVolunteers),
         color = "black", weight = 1,
         fillOpacity = 0.7,
-        label = lapply(data$label_vce_vol, htmltools::HTML),
+        label = lapply(data$label_vce, htmltools::HTML),
         highlightOptions = highlightOptions(weight = 2, color = "#666",
                                             fillOpacity = 0.9, bringToFront = TRUE)
       ) %>%
-      addLegend("bottomright", pal = pal, values = data$VolunteerRate,
-                title = "Volunteers as % of Pop.", opacity = 1)
+      addLegend("bottomright", pal = pal,
+                values = data$GroupVolunteers,
+                title = "Volunteers (Selected Group)",
+                opacity = 1)
   })
+  
   
   ##Start of 4H Map
   # === 4-H Volunteer Demographic Map (By Race or Ethnicity) ===
@@ -577,56 +623,87 @@ server <- function(input, output, session) {
   
   
   # === DEMOGRAPHIC MAP ===
-  demographic_data <- read_csv("newcountiesdemographics.csv") %>%
-    group_by(site_county) %>%
-    summarise(total_participants = sum(participants_total, na.rm = TRUE)) %>%
+  
+  # Assume your data is loaded as 'participant_data'
+  participant_data <- read_excel("vce_particip_demographics.xlsx") %>%
     mutate(
-      County = tolower(site_county),
-      County = gsub(" county", "", County),
-      County = gsub(" city", "", County),
-      County = trimws(County)
+      County = tolower(trimws(site_county))
     )
-  population_data <- read_csv("virginia2024population.csv",
-                              skip = 2,
-                              col_names = c("State_County", "Population")) %>%
-    filter(!is.na(Population)) %>%
-    mutate(
-      County = tolower(State_County),
-      County = gsub(" county, virginia", "", County),
-      County = gsub(" city, virginia", "", County),
-      County = gsub("^\\.", "", County),
-      County = trimws(County),
-      Population = as.numeric(Population),
-      Population = ifelse(County == "fairfax", 1147532, Population),
-      Population = ifelse(County == "franklin", 54477, Population)
-    ) %>%
-    select(County, Population)
-  demographic_data <- left_join(demographic_data, population_data, "County") %>%
-    mutate(participation_rate = (total_participants / Population) * 100)
-  demographic_map_data <- left_join(va_counties, demographic_data, "County") %>% st_as_sf()
-  pal_demo <- colorBin("YlOrRd", domain = demographic_map_data$participation_rate,
-                       bins = 5, na.color = "#f0f0f0")
-  demographic_map_data <- demographic_map_data %>%
-    mutate(label_demo = paste0(
-      "<strong>", toupper(County), "</strong><br>",
-      "Total Participants: ", total_participants, "<br>",
-      "County Population: ", format(Population, big.mark = ","), "<br>",
-      "Participation Rate: ", round(participation_rate, 2), "%"
-    ))
-  output$demographic_map <- renderLeaflet({
-    leaflet(demographic_map_data) %>%
+  
+  # Reactive filter based on user selection
+  filtered_participant_data <- reactive({
+    data <- participant_data
+    switch(input$participant_race_filter,
+           "eth_hispanic" = data <- data %>% filter(participants_ethnicity_hispanic > 0),
+           "race_white" = data <- data %>% filter(participants_race_white > 0),
+           "race_black" = data <- data %>% filter(participants_race_black > 0),
+           "race_asian" = data <- data %>% filter(participants_race_asian > 0),
+           "all" = data <- data  # No filtering
+    )
+    data
+  })
+  
+  # Map data preparation
+  map_data <- reactive({
+    # Total participants per county
+    total_counts <- participant_data %>%
+      group_by(County) %>%
+      summarise(TotalParticipants = sum(participants_total, na.rm = TRUE))
+    
+    # Filtered group counts
+    group_counts <- filtered_participant_data() %>%
+      mutate(GroupCount = case_when(
+        input$participant_race_filter == "eth_hispanic" ~ participants_ethnicity_hispanic,
+        input$participant_race_filter == "race_white" ~ participants_race_white,
+        input$participant_race_filter == "race_black" ~ participants_race_black,
+        input$participant_race_filter == "race_asian" ~ participants_race_asian,
+        input$participant_race_filter == "all" ~ participants_total,
+        TRUE ~ 0
+      )) %>%
+      group_by(County) %>%
+      summarise(GroupParticipants = sum(GroupCount, na.rm = TRUE))
+    
+    # Merge with spatial data
+    merged <- left_join(va_counties, total_counts, by = "County") %>%
+      left_join(group_counts, by = "County") %>%
+      replace_na(list(GroupParticipants = 0)) %>%
+      st_as_sf()
+    
+    # Create labels
+    merged <- merged %>%
+      mutate(label_participant = paste0(
+        "<strong>", toupper(County), "</strong><br>",
+        "Selected Group Participants: ", GroupParticipants, "<br>",
+        "Total Participants: ", TotalParticipants
+      ))
+    
+    merged
+  })
+  
+  # Render map
+  output$participant_map <- renderLeaflet({
+    data <- map_data()
+    pal <- colorBin("YlOrRd", domain = data$GroupParticipants, bins = 5, na.color = "#f0f0f0")
+    
+    leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
-        fillColor = ~pal_demo(participation_rate),
-        color = "black", weight = 1, fillOpacity = 0.7,
-        label = lapply(demographic_map_data$label_demo, htmltools::HTML),
-        highlightOptions = highlightOptions(weight=2,color="#666",
-                                            fillOpacity=0.9,bringToFront=TRUE)
+        fillColor = ~pal(GroupParticipants),
+        color = "black", weight = 1,
+        fillOpacity = 0.7,
+        label = lapply(data$label_participant, htmltools::HTML),
+        highlightOptions = highlightOptions(weight = 2, color = "#666",
+                                            fillOpacity = 0.9, bringToFront = TRUE)
       ) %>%
-      addLegend("bottomright", pal=pal_demo,
-                values=demographic_map_data$participation_rate,
-                title="Participation Rate (%)", opacity=1)
+      addLegend("bottomright", pal = pal,
+                values = data$GroupParticipants,
+                title = "Participants (Selected Group)",
+                opacity = 1)
   })
+  
+  
+  
+  # === REGRESSION ===
   output$regression_results <- renderUI({
     model <- lm(log(Participants + 1) ~ 
                   log(`Average Household Size`) + 
@@ -694,6 +771,12 @@ server <- function(input, output, session) {
 
 # === RUN APP ===
 shinyApp(ui, server)
+
+
+
+
+
+
 
 
 
